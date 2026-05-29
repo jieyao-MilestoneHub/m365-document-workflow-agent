@@ -7,6 +7,7 @@ from decimal import Decimal
 from app.orchestrator.envelope import MultiAgentEnvelope, SpecialistResult
 from app.orchestrator.roles import INVOICE_EXTRACTOR
 from app.orchestrator.specialists.po_grn_matcher import PoGrnMatcher
+from app.schemas.enums import LineStatus
 from app.schemas.invoice import InvoiceLineItem, VendorInvoice
 from app.schemas.policy import PolicyBundle
 from app.schemas.reference import GoodsReceiptNote, GRNLine, POLine, PurchaseOrder
@@ -16,7 +17,7 @@ class _FakeKnowledge:
     def __init__(self, po, grn, invoiced=None):
         self._po, self._grn, self._invoiced = po, grn, invoiced or {}
 
-    def get_policy(self):
+    def get_policy(self):  # not used by the matcher (policy comes from the envelope)
         return PolicyBundle()
 
     def get_purchase_order(self, *, po_ref):
@@ -29,9 +30,9 @@ class _FakeKnowledge:
         return self._invoiced
 
 
-def _invoice(qty: str) -> VendorInvoice:
+def _invoice(qty: str, sku: str = "WIDGET-A") -> VendorInvoice:
     line = InvoiceLineItem(
-        line_no=1, sku="WIDGET-A", description="Widget A", quantity=Decimal(qty),
+        line_no=1, sku=sku, description="Widget A", quantity=Decimal(qty),
         unit_price=Decimal("95.00"), line_total=Decimal(qty) * Decimal("95.00"),
     )
     return VendorInvoice(
@@ -41,9 +42,14 @@ def _invoice(qty: str) -> VendorInvoice:
     )
 
 
-def _envelope(invoice) -> MultiAgentEnvelope:
-    env = MultiAgentEnvelope(invoice_ref=invoice.invoice_number)
+def _envelope(invoice, policy: PolicyBundle | None = None) -> MultiAgentEnvelope:
+    env = MultiAgentEnvelope(invoice_ref=invoice.invoice_number, policy=policy or PolicyBundle())
     return env.with_result(SpecialistResult(role=INVOICE_EXTRACTOR, payload=invoice))
+
+
+_FULL_GRN = GoodsReceiptNote(grn_number="GRN-7000",
+                             lines=[GRNLine(sku="WIDGET-A", description="Widget A",
+                                            received_quantity=Decimal("10"))])
 
 
 PO = PurchaseOrder(po_number="PO-5000", vendor_name="Globex", currency="USD",
@@ -80,3 +86,20 @@ def test_over_billed_accounts_for_prior_invoicing():
     report = matcher.run(_envelope(_invoice("10"))).payload
     assert report.lines[0].over_billed is True
     assert report.lines[0].remaining_billable_quantity == Decimal("2")
+
+
+def test_vendor_sku_resolves_via_alias():
+    policy = PolicyBundle(sku_aliases={"GLX-WA-01": "WIDGET-A"})
+    matcher = PoGrnMatcher(_FakeKnowledge(PO, _FULL_GRN))
+    report = matcher.run(_envelope(_invoice("10", sku="GLX-WA-01"), policy)).payload
+    line = report.lines[0]
+    assert line.resolved_sku == "WIDGET-A"
+    assert line.alias_unresolved is False
+    assert line.status is LineStatus.MATCHED
+
+
+def test_unknown_vendor_sku_flags_alias_unresolved():
+    # no alias for UNKNOWN-X; only the description rescues the match → needs human confirm
+    matcher = PoGrnMatcher(_FakeKnowledge(PO, _FULL_GRN))
+    report = matcher.run(_envelope(_invoice("10", sku="UNKNOWN-X"))).payload
+    assert report.lines[0].alias_unresolved is True
