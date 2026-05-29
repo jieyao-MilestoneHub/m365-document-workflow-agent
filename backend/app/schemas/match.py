@@ -24,6 +24,12 @@ class LineMatch(BaseModel):
     #: invoice.unit_price - po.unit_price (signed; + = overbilled)
     price_delta: Decimal = Decimal("0")
     within_tolerance: bool = True
+    # line-level billing position (against the goods actually received)
+    received_quantity: Decimal | None = None
+    invoiced_to_date_quantity: Decimal = Decimal("0")
+    remaining_billable_quantity: Decimal | None = None
+    #: True when this invoice bills more than the remaining received-but-unbilled quantity
+    over_billed: bool = False
     note: str | None = None
 
 

@@ -48,8 +48,9 @@ class PoGrnMatcher:
         grn, grn_cites = self._knowledge.get_goods_receipt(grn_ref=invoice.grn_ref)
 
         currency_mismatch = po is not None and invoice.currency != po.currency
+        invoiced_to_date = self._knowledge.get_invoiced_to_date(po_ref=invoice.po_ref)
         lines = [
-            self._match_line(li, po, grn, tolerance, currency_mismatch)
+            self._match_line(li, po, grn, tolerance, currency_mismatch, invoiced_to_date)
             for li in invoice.line_items
         ]
         report = ThreeWayMatchReport(
@@ -77,7 +78,8 @@ class PoGrnMatcher:
         )
 
     def _match_line(self, li, po: PurchaseOrder | None, grn: GoodsReceiptNote | None,
-                    tolerance, currency_mismatch: bool = False):
+                    tolerance, currency_mismatch: bool = False,
+                    invoiced_to_date: dict[str, Decimal] | None = None):
         po_idx = _find_index(li.sku, li.description, po.lines) if po else None
         grn_idx = _find_index(li.sku, li.description, grn.lines) if grn else None
 
@@ -97,11 +99,21 @@ class PoGrnMatcher:
             quantity_delta=qty_delta, price_delta=price_delta,
             po_unit_price=po_line.unit_price, tolerance=tolerance,
         )
+
+        # line-level billing position: bill no more than what's received-but-unbilled
+        billed_before = (invoiced_to_date or {}).get(li.sku or li.description, Decimal("0"))
+        remaining_billable = grn_line.received_quantity - billed_before
+        over_billed = li.quantity > remaining_billable
+
         return LineMatch(
             invoice_line_no=li.line_no, po_line_idx=po_idx, grn_line_idx=grn_idx,
             po_unit_price=po_line.unit_price,
             status=self._status(within, qty_delta, price_delta),
             quantity_delta=qty_delta, price_delta=price_delta, within_tolerance=within,
+            received_quantity=grn_line.received_quantity,
+            invoiced_to_date_quantity=billed_before,
+            remaining_billable_quantity=remaining_billable,
+            over_billed=over_billed,
         )
 
     @staticmethod

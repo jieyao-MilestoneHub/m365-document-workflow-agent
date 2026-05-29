@@ -7,6 +7,7 @@ produce.
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 from pathlib import Path
 
 from app.schemas.citation import Citation
@@ -57,6 +58,15 @@ class FixtureKnowledge:
             return None, []
         grn = GoodsReceiptNote.model_validate_json(path.read_text(encoding="utf-8"))
         return grn, [self._citation(grn_ref, "Goods Receipt Note", _grn_snippet(grn))]
+
+    def get_invoiced_to_date(self, *, po_ref: str | None) -> dict:
+        if not po_ref:
+            return {}
+        path = self._base / "invoiced_to_date.json"
+        if not path.exists():
+            return {}
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return {k: Decimal(str(v)) for k, v in data.get(po_ref, {}).items()}
 
     @staticmethod
     def _citation(doc_id: str, kind: str, snippet: str) -> Citation:

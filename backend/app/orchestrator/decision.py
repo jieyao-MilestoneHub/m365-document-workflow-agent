@@ -122,6 +122,14 @@ def evaluate_outcome(
     if match is not None and match.match_status in (MatchStatus.MISSING_PO, MatchStatus.MISSING_GRN):
         tickets.append(_ticket(inv_no, BlockingReason.THREE_WAY_MATCH_INCOMPLETE, Severity.MEDIUM))
 
+    # --- Over-billed vs receipt (billing goods not yet received) ---------------
+    if match is not None:
+        over_lines = [m.invoice_line_no for m in match.lines if m.over_billed]
+        if over_lines:
+            tickets.append(
+                _ticket(inv_no, BlockingReason.OVER_BILLED_VS_RECEIPT, Severity.MEDIUM, over_lines)
+            )
+
     # --- Posting / GL ----------------------------------------------------------
     if posting is not None:
         balance = check_posting_balance(posting)

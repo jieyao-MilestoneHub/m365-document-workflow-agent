@@ -6,6 +6,7 @@ Azure implementation (prod) under ``app/adapters`` — fully substitutable (Lisk
 """
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Protocol, runtime_checkable
 
 from app.schemas.citation import Citation
@@ -34,6 +35,10 @@ class KnowledgePort(Protocol):
     def get_goods_receipt(
         self, *, grn_ref: str | None
     ) -> tuple[GoodsReceiptNote | None, list[Citation]]: ...
+
+    def get_invoiced_to_date(self, *, po_ref: str | None) -> dict[str, Decimal]:
+        """Quantity already invoiced per line key (sku or description) against this PO."""
+        ...
 
 
 @runtime_checkable
