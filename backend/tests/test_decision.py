@@ -102,6 +102,47 @@ def test_vendor_on_hold_holds(policy):
     assert BlockingReason.VENDOR_ON_HOLD_LIST in outcome.blocking_reasons
 
 
+def test_currency_mismatch_escalates(clean_invoice, policy):
+    report = ThreeWayMatchReport(
+        invoice_number="INV-1043", match_status=MatchStatus.PARTIAL,
+        currency_mismatch=True, po_currency="EUR", lines=[],
+    )
+    outcome = evaluate_outcome(
+        invoice=clean_invoice, match=report, variance=_clean_variance("INV-1043"),
+        posting=balanced_posting("INV-1043"), policy=policy,
+    )
+    assert outcome.decision is Decision.ESCALATE
+    assert BlockingReason.CURRENCY_MISMATCH in outcome.blocking_reasons
+
+
+def test_duplicate_invoice_escalates(clean_invoice, policy):
+    outcome = evaluate_outcome(
+        invoice=clean_invoice, match=_matched_report("INV-1043"),
+        variance=_clean_variance("INV-1043"), posting=balanced_posting("INV-1043"),
+        policy=policy, is_duplicate=True,
+    )
+    assert outcome.decision is Decision.ESCALATE
+    assert BlockingReason.DUPLICATE_INVOICE in outcome.blocking_reasons
+
+
+def test_tax_discrepancy_holds(policy):
+    line = InvoiceLineItem(
+        line_no=1, description="x", quantity=Decimal("1"), unit_price=Decimal("100.00"),
+        line_total=Decimal("100.00"), tax_rate=Decimal("0.10"),
+    )
+    invoice = VendorInvoice(
+        vendor_name="Globex", invoice_number="INV-T", invoice_date=date(2026, 5, 20),
+        currency="USD", subtotal=Decimal("100.00"), tax_total=Decimal("5.00"),
+        total=Decimal("105.00"), line_items=[line],
+    )
+    outcome = evaluate_outcome(
+        invoice=invoice, match=_matched_report("INV-T"), variance=_clean_variance("INV-T"),
+        posting=balanced_posting("INV-T"), policy=policy,
+    )
+    assert outcome.decision is Decision.HOLD
+    assert BlockingReason.TAX_DISCREPANCY in outcome.blocking_reasons
+
+
 def test_empty_line_items_escalates_quality_fail(policy):
     invoice = VendorInvoice(
         vendor_name="Globex", invoice_number="INV-Q", invoice_date=date(2026, 5, 20),
