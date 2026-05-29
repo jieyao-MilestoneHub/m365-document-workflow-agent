@@ -61,3 +61,15 @@ def test_decision_recorded(client):
 def test_handoff_history_present(client):
     detail = client.post("/api/jobs", json={"invoice_ref": "INV-1043"}).json()
     assert len(detail["handoff_history"]) >= 5
+
+
+def test_stream_emits_trace_then_completed(client):
+    job = client.post("/api/jobs", json={"invoice_ref": "INV-1042"}).json()
+    body = client.get(f"/api/jobs/{job['job_id']}/stream").text
+    assert body.count("event: trace") >= 6
+    assert "event: completed" in body
+    assert "hold" in body
+
+
+def test_stream_unknown_job_404(client):
+    assert client.get("/api/jobs/deadbeef/stream").status_code == 404
