@@ -1,0 +1,58 @@
+"""Supervisor brains — the swappable decision policy behind the supervisor loop.
+
+The loop (``supervisor.py``) is fixed infrastructure; the *decision* of what to do next is a
+:class:`SupervisorBrain`. Offline/tests use :class:`ScriptedSupervisor` (deterministic but
+state-reactive: it retries on failure and triggers peer review). In prod, an Agent-Framework
+Magentic manager implements the same protocol — same loop, LLM-driven routing.
+"""
+from __future__ import annotations
+
+from typing import Protocol
+
+from app.schemas.enums import Severity
+
+from .actions import Delegate, Escalate, Finalize, PeerReview, SupervisorAction
+from .envelope import MultiAgentEnvelope
+from .roles import (
+    EXCEPTION_REVIEWER,
+    PIPELINE_ORDER,
+    PO_GRN_MATCHER,
+    POSTING_PREPARER,
+    VARIANCE_ASSESSOR,
+)
+
+MAX_ATTEMPTS = 2  # initial try + one self-correction retry
+
+
+class SupervisorBrain(Protocol):
+    def next_action(self, envelope: MultiAgentEnvelope) -> SupervisorAction: ...
+
+
+class ScriptedSupervisor:
+    """Routes along the dependency order, reacting to failures and variance severity."""
+
+    def next_action(self, envelope: MultiAgentEnvelope) -> SupervisorAction:
+        for role in PIPELINE_ORDER:
+            result = envelope.result_for(role)
+
+            if result is None:
+                if role is POSTING_PREPARER and self._needs_peer_review(envelope):
+                    return PeerReview(
+                        reviewer=PO_GRN_MATCHER, subject_role=VARIANCE_ASSESSOR,
+                        claim="variance severity grading", question="Is the grading sound?",
+                    )
+                return Delegate(role=role, reason="next in pipeline")
+
+            if not result.ok:
+                if envelope.visited(role) < MAX_ATTEMPTS:
+                    return Delegate(role=role, reason=f"retry after error: {result.error}")
+                return Escalate(reason_code="SPECIALIST_FAILED", summary=f"{role}: {result.error}")
+
+        return Finalize()
+
+    @staticmethod
+    def _needs_peer_review(envelope: MultiAgentEnvelope) -> bool:
+        variance = envelope.payload_for(VARIANCE_ASSESSOR)
+        if variance is None or envelope.peer_reviews:
+            return False
+        return variance.overall_severity in (Severity.MEDIUM, Severity.HIGH)
