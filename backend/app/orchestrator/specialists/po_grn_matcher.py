@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from app.schemas.enums import LineStatus
+from app.schemas.enums import LineCharge, LineStatus
 from app.schemas.invoice import VendorInvoice
 from app.schemas.match import LineMatch, ThreeWayMatchReport
 from app.schemas.reference import GoodsReceiptNote, PurchaseOrder
@@ -88,6 +88,16 @@ class PoGrnMatcher:
                     tolerance, currency_mismatch: bool = False,
                     invoiced_to_date: dict[str, Decimal] | None = None,
                     aliases: dict[str, str] | None = None):
+        # Charge lines (freight/misc/discount) have no PO/GRN counterpart — skip the
+        # three-way match entirely and emit a neutral result. They are governed by
+        # freight_tolerance (decision.py) and routed in posting, not matched here.
+        if li.charge_type is not LineCharge.GOOD:
+            return LineMatch(
+                invoice_line_no=li.line_no, status=LineStatus.MATCHED,
+                within_tolerance=True, over_billed=False,
+                note=f"{li.charge_type.value} charge — not subject to three-way match",
+            )
+
         aliases = aliases or {}
         po_idx, po_method = _find_index(li.sku, li.description, po.lines, aliases) if po else (None, None)
         grn_idx, _ = _find_index(li.sku, li.description, grn.lines, aliases) if grn else (None, None)

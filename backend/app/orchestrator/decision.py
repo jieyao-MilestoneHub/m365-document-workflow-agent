@@ -6,10 +6,13 @@ guarantees a variance never silently auto-posts.
 """
 from __future__ import annotations
 
+from decimal import Decimal
+
 from app.schemas.enums import (
     ESCALATE_REASONS,
     BlockingReason,
     Decision,
+    LineCharge,
     MatchStatus,
     Severity,
 )
@@ -45,6 +48,7 @@ _RESOLUTIONS: dict[BlockingReason, str] = {
     BlockingReason.DUPLICATE_INVOICE: "Invoice already posted; reject as a duplicate payment.",
     BlockingReason.TAX_DISCREPANCY: "Reconcile the invoice tax against the line tax rates.",
     BlockingReason.OVER_BILLED_VS_RECEIPT: "Billed quantity exceeds received; confirm receipt before posting.",
+    BlockingReason.UNPLANNED_CHARGE: "Unplanned freight/misc charge above tolerance; confirm with procurement.",
     BlockingReason.SKU_ALIAS_UNRESOLVED: "Confirm the vendor-SKU to internal-SKU mapping.",
 }
 
@@ -116,6 +120,23 @@ def evaluate_outcome(
         elif variance.overall_severity is Severity.MEDIUM and out_of_tol:
             tickets.append(
                 _ticket(inv_no, BlockingReason.VARIANCE_OUTSIDE_TOLERANCE, Severity.MEDIUM, out_of_tol)
+            )
+
+    # --- Unplanned charges (freight/misc above tolerance) → hold --------------
+    if invoice is not None:
+        charge_lines = [
+            li for li in invoice.line_items
+            if li.charge_type in (LineCharge.FREIGHT, LineCharge.MISC)
+        ]
+        charge_total = sum((li.line_total for li in charge_lines), Decimal("0"))
+        if charge_total > policy.freight_tolerance:
+            tickets.append(
+                _ticket(
+                    inv_no, BlockingReason.UNPLANNED_CHARGE, Severity.MEDIUM,
+                    [li.line_no for li in charge_lines],
+                    evidence={"charge_total": str(charge_total),
+                              "freight_tolerance": str(policy.freight_tolerance)},
+                )
             )
 
     # --- Three-way match completeness -----------------------------------------

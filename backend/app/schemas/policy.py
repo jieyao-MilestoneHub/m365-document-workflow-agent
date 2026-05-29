@@ -44,6 +44,8 @@ class GLMap(BaseModel):
     ap_liability: str = "2100"
     expense_fallback: str = "5000"
     tax: str = "1360"
+    #: account that freight / misc charge lines post to (kept out of goods expense)
+    freight_gl_account: str = "5800"
     #: optional SKU/category → expense account overrides
     overrides: dict[str, str] = Field(default_factory=dict)
 
@@ -73,6 +75,8 @@ class PolicyBundle(BaseModel):
     thresholds: VarianceThresholds = Field(default_factory=VarianceThresholds)
     gl_map: GLMap = Field(default_factory=GLMap)
     vendors: VendorConfig = Field(default_factory=VendorConfig)
+    #: total unplanned freight/misc charges above this hold for review (HOLD, not escalate)
+    freight_tolerance: Decimal = Field(default=Decimal("25.00"), description="currency units")
     valid_gl_accounts: frozenset[str] = Field(default_factory=frozenset)
     closed_periods: frozenset[str] = Field(default_factory=frozenset, description="YYYY-MM strings")
     #: vendor SKU -> internal SKU (so vendor item codes resolve to the catalogue)
