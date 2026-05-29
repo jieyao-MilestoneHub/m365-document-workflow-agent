@@ -3,90 +3,14 @@
 AP Invoice Three-Way Match Agent — *let AI participate in the finance process, but never let AI
 break financial controls.*
 
-This document is the hackathon's architecture-diagram deliverable. The diagram below is authored
-in **Mermaid** so it renders directly on GitHub. Components that require Azure/M365 provisioning
-are marked **(gated)** — they are designed and ports-isolated, but not yet wired (see
+This document is the hackathon's architecture-diagram deliverable. Components that require
+Azure/M365 provisioning are marked **gated** — designed and ports-isolated, but not yet wired (see
 [`ROADMAP.md`](ROADMAP.md)).
 
-```mermaid
-flowchart TB
-    subgraph Surface["M365 surface (gated)"]
-        copilot["M365 Copilot / Teams"]
-        proxy["M365 Agents-SDK proxy<br/>(custom-engine agent + Adaptive Cards)"]
-        copilot --> proxy
-    end
+![AP Invoice Three-Way Match — architecture](architecture.svg)
 
-    subgraph Console["Next.js console (built — scaffold)"]
-        ui["Approver console<br/>typed, zod-validated API client<br/>CSP + security headers"]
-    end
-
-    subgraph API["FastAPI service (built)"]
-        rest["REST: /api/scenarios · /api/jobs<br/>/api/jobs/{id}/decision · /api/health"]
-        sse["SSE: /api/jobs/{id}/stream<br/>(reasoning trace)"]
-    end
-
-    subgraph Core["Orchestrator core (built — offline, 86 tests)"]
-        sup["Magentic-style supervisor loop<br/>action per turn:<br/>delegate / peer-review / request-input /<br/>escalate / finalize"]
-        guard["Deterministic guardrails (authoritative)<br/>tool-call budget · per-role visit cap ·<br/>cycle detection · pass/hold/escalate matrix"]
-
-        subgraph Specs["5 specialists"]
-            s1["invoice_extractor"]
-            s2["po_grn_matcher"]
-            s3["variance_assessor"]
-            s4["posting_preparer"]
-            s5["exception_reviewer"]
-            s1 --> s2 --> s3 --> s4 --> s5
-        end
-
-        sup -- "pre-flight veto" --> guard
-        sup --> Specs
-        guard --> sup
-    end
-
-    subgraph Ports["Port protocols (Dependency Inversion)"]
-        pext["ExtractorPort"]
-        pknow["KnowledgePort"]
-        pledger["LedgerPort"]
-        preason["ReasoningPort"]
-        phuman["HumanInputPort"]
-    end
-
-    subgraph Offline["Fixture adapters (built — synthetic JSON)"]
-        fext["FixtureExtractor"]
-        fknow["FixtureKnowledge"]
-        fledger["FixtureLedger"]
-        freason["ScriptedReasoner"]
-        fhuman["Fixture/Scripted HumanInput"]
-    end
-
-    subgraph Azure["Azure adapters (gated)"]
-        adi["Azure AI Document Intelligence<br/>prebuilt-invoice"]
-        afiq["Foundry IQ<br/>grounded retrieval + citations"]
-        aoai["Azure OpenAI<br/>advisory narration only"]
-    end
-
-    proxy -. "gated" .-> API
-    ui --> rest
-    ui --> sse
-    rest --> sup
-    sse --> sup
-
-    s1 --> pext
-    s2 --> pknow
-    s5 --> pledger
-    s5 --> preason
-    sup --> phuman
-
-    pext --> fext
-    pknow --> fknow
-    pledger --> fledger
-    preason --> freason
-    phuman --> fhuman
-
-    pext -. "gated" .-> adi
-    pknow -. "gated" .-> afiq
-    preason -. "gated" .-> aoai
-```
+> The diagram is a self-contained SVG ([`architecture.svg`](architecture.svg)) and renders inline on
+> GitHub. Edit the SVG to update it.
 
 ## Walk-through
 

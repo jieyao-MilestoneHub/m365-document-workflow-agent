@@ -119,17 +119,11 @@ The catalog *proves* behaviour on the exceptions that matter (full table in
 
 ## Architecture
 
-See [`docs/architecture.md`](docs/architecture.md) for the Mermaid diagram (renders on GitHub) and a
-walk-through, [`docs/ROADMAP.md`](docs/ROADMAP.md) for the workstream × phase plan, and
-[`docs/SUBMISSION.md`](docs/SUBMISSION.md) for the hackathon submission checklist.
+![AP Invoice Three-Way Match — architecture](docs/architecture.svg)
 
-```text
-M365 Copilot / Teams  →  M365 Agents-SDK proxy  →  FastAPI (+ SSE)  →  Magentic supervisor
-                                                                          ├─ 5 specialists
-                                                                          └─ deterministic guardrails
-        Foundry IQ · Azure Document Intelligence · Azure OpenAI  (behind ports — gated)
-        Next.js console  ←  consumes the SSE reasoning stream
-```
+See [`docs/architecture.md`](docs/architecture.md) for the diagram walk-through,
+[`docs/ROADMAP.md`](docs/ROADMAP.md) for the workstream × phase plan, and
+[`docs/SUBMISSION.md`](docs/SUBMISSION.md) for the hackathon submission checklist.
 
 ## Compliance & safety
 

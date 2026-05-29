@@ -8,7 +8,7 @@ Deadline: **2026-06-14**. The video itself is a human recording step — see
 
 - [ ] **Public repo** — this repository, clean-room, no secrets in tree or history.
 - [ ] **README** — description, run steps, IQ usage, demo arc ([`../README.md`](../README.md), #19).
-- [ ] **Architecture diagram** — Mermaid, renders on GitHub ([`architecture.md`](architecture.md), #20).
+- [ ] **Architecture diagram** — self-contained SVG, renders on GitHub ([`architecture.md`](architecture.md), #20).
 - [ ] **Demo video** — ≤ 5 min, the hard-point arc ([`DEMO_SCRIPT.md`](DEMO_SCRIPT.md), #21).
 
 ## Registration (user action)
