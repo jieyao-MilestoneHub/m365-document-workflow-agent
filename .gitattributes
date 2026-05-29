@@ -1,0 +1,10 @@
+# Normalize line endings to LF in the repo (consistent across Windows/macOS/Linux).
+* text=auto eol=lf
+
+# Treat binary assets as binary (no EOL munging).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.ico binary
