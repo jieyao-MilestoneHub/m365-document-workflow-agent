@@ -29,6 +29,10 @@ out/
 .deployment/
 env/.env.*.user
 
+# Scratch / working notes (not for public history)
+tmp-*
+*.scratch.md
+
 # OS / editor
 .DS_Store
 Thumbs.db
