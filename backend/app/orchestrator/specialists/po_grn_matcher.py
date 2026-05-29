@@ -38,6 +38,19 @@ def _find_index(
     return None, None
 
 
+def _uom_reconcilable(invoice_line, po_line) -> bool:
+    """True unless the invoice and PO units differ with no conversion factor to bridge them.
+
+    Reconcilable when either side omits a UOM, the units match, or an explicit
+    ``uom_factor`` (≠ 1) is supplied to convert the invoice UOM into the PO UOM.
+    """
+    inv_uom = (invoice_line.unit_of_measure or "").strip().lower()
+    po_uom = (po_line.unit_of_measure or "").strip().lower()
+    if not inv_uom or not po_uom or inv_uom == po_uom:
+        return True
+    return invoice_line.uom_factor != Decimal("1")
+
+
 class PoGrnMatcher:
     role = PO_GRN_MATCHER
 
@@ -112,11 +125,15 @@ class PoGrnMatcher:
         po_line, grn_line = po.lines[po_idx], grn.lines[grn_idx]
         resolved_sku = aliases.get(li.sku, li.sku) if li.sku else None
         alias_unresolved = po_method == "description" and bool(li.sku) and li.sku not in aliases
-        qty_delta = li.quantity - grn_line.received_quantity
+        # Normalize the invoice quantity into the PO/GRN base UOM before comparing. A UOM that
+        # differs from the PO with no conversion factor cannot be reconciled — a silent unit
+        # error is high-$, so flag it and force a non-matched status (decision.py escalates).
+        uom_mismatch = not _uom_reconcilable(li, po_line)
+        qty_delta = (li.quantity * li.uom_factor) - grn_line.received_quantity
         # Cross-currency price deltas are meaningless; the report-level currency_mismatch
         # flag escalates instead, so suppress the per-line price comparison here.
         price_delta = Decimal("0") if currency_mismatch else li.unit_price - po_line.unit_price
-        within = evaluate_line_tolerance(
+        within = (not uom_mismatch) and evaluate_line_tolerance(
             quantity_delta=qty_delta, price_delta=price_delta,
             po_unit_price=po_line.unit_price, tolerance=tolerance,
         )
@@ -129,7 +146,7 @@ class PoGrnMatcher:
         return LineMatch(
             invoice_line_no=li.line_no, po_line_idx=po_idx, grn_line_idx=grn_idx,
             po_unit_price=po_line.unit_price,
-            status=self._status(within, qty_delta, price_delta),
+            status=self._status(within, qty_delta, price_delta, uom_mismatch),
             quantity_delta=qty_delta, price_delta=price_delta, within_tolerance=within,
             received_quantity=grn_line.received_quantity,
             invoiced_to_date_quantity=billed_before,
@@ -137,10 +154,18 @@ class PoGrnMatcher:
             over_billed=over_billed,
             resolved_sku=resolved_sku,
             alias_unresolved=alias_unresolved,
+            uom_mismatch=uom_mismatch,
+            note=(
+                f"UOM {li.unit_of_measure} ≠ PO {po_line.unit_of_measure} with no conversion"
+                if uom_mismatch else None
+            ),
         )
 
     @staticmethod
-    def _status(within: bool, qty_delta: Decimal, price_delta: Decimal) -> LineStatus:
+    def _status(within: bool, qty_delta: Decimal, price_delta: Decimal,
+                uom_mismatch: bool = False) -> LineStatus:
+        if uom_mismatch:
+            return LineStatus.UNIT_VARIANCE
         if within:
             return LineStatus.MATCHED
         if price_delta.copy_abs() > 0:

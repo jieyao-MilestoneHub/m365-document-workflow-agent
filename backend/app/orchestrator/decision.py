@@ -49,6 +49,7 @@ _RESOLUTIONS: dict[BlockingReason, str] = {
     BlockingReason.TAX_DISCREPANCY: "Reconcile the invoice tax against the line tax rates.",
     BlockingReason.OVER_BILLED_VS_RECEIPT: "Billed quantity exceeds received; confirm receipt before posting.",
     BlockingReason.UNPLANNED_CHARGE: "Unplanned freight/misc charge above tolerance; confirm with procurement.",
+    BlockingReason.UOM_MISMATCH: "Invoice unit of measure differs from the PO; confirm the conversion factor.",
     BlockingReason.SKU_ALIAS_UNRESOLVED: "Confirm the vendor-SKU to internal-SKU mapping.",
 }
 
@@ -154,6 +155,11 @@ def evaluate_outcome(
         if alias_lines:
             tickets.append(
                 _ticket(inv_no, BlockingReason.SKU_ALIAS_UNRESOLVED, Severity.LOW, alias_lines)
+            )
+        uom_lines = [m.invoice_line_no for m in match.lines if m.uom_mismatch]
+        if uom_lines:
+            tickets.append(
+                _ticket(inv_no, BlockingReason.UOM_MISMATCH, Severity.HIGH, uom_lines)
             )
 
     # --- Posting / GL ----------------------------------------------------------

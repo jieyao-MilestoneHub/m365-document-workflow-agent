@@ -33,6 +33,11 @@ class InvoiceLineItem(BaseModel):
     #: (freight/misc/discount) are routed and governed separately. Defaults to ``good``
     #: so existing fixtures/payloads are unaffected.
     charge_type: LineCharge = LineCharge.GOOD
+    #: unit the line is billed in (e.g. "ea", "case"). When it differs from the PO unit,
+    #: a ``uom_factor`` must convert it to the PO unit or the line cannot be reconciled.
+    unit_of_measure: str | None = None
+    #: multiplier converting this line's UOM to the PO/GRN base UOM (qty × factor = base qty)
+    uom_factor: Decimal = Decimal("1")
 
     @model_validator(mode="after")
     def _check_line_arithmetic(self) -> "InvoiceLineItem":

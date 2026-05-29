@@ -93,6 +93,7 @@ class BlockingReason(str, Enum):
     # Line-level / data exceptions
     OVER_BILLED_VS_RECEIPT = "OVER_BILLED_VS_RECEIPT"
     UNPLANNED_CHARGE = "UNPLANNED_CHARGE"
+    UOM_MISMATCH = "UOM_MISMATCH"
     SKU_ALIAS_UNRESOLVED = "SKU_ALIAS_UNRESOLVED"
     CURRENCY_MISMATCH = "CURRENCY_MISMATCH"
     DUPLICATE_INVOICE = "DUPLICATE_INVOICE"
@@ -119,5 +120,6 @@ ESCALATE_REASONS: frozenset[BlockingReason] = frozenset(
         BlockingReason.SPECIALIST_FAILED,
         BlockingReason.CURRENCY_MISMATCH,
         BlockingReason.DUPLICATE_INVOICE,
+        BlockingReason.UOM_MISMATCH,
     }
 )

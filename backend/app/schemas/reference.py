@@ -18,6 +18,8 @@ class POLine(BaseModel):
     description: str
     quantity: Decimal
     unit_price: Decimal
+    #: unit the PO line is denominated in (e.g. "ea"); compared against the invoice UOM
+    unit_of_measure: str | None = None
 
 
 class PurchaseOrder(BaseModel):
