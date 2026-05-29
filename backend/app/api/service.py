@@ -52,7 +52,12 @@ def serialize_run(run_result: SupervisorRun, *, job_id: str, invoice_ref: str) -
 
 def run_job(invoice_ref: str, *, base_dir: str | Path = DEFAULT_DATA_DIR) -> JobRecord:
     # 404 for a non-existent invoice; in-band extraction failures still escalate (not 404).
-    if not (Path(base_dir) / "invoices" / f"{invoice_ref}.json").exists():
+    # Containment guard (defense in depth beyond the CreateJobRequest pattern, since the CLI
+    # also reaches this path): the resolved target must stay inside the invoices directory, so
+    # a traversal ref like "../../etc/passwd" can never read a file outside the data dir.
+    invoices_dir = (Path(base_dir) / "invoices").resolve()
+    target = (invoices_dir / f"{invoice_ref}.json").resolve()
+    if not target.is_relative_to(invoices_dir) or not target.exists():
         raise FileNotFoundError(f"no invoice {invoice_ref}")
     job_id = uuid.uuid4().hex[:12]
     return serialize_run(run(invoice_ref, base_dir=base_dir), job_id=job_id, invoice_ref=invoice_ref)

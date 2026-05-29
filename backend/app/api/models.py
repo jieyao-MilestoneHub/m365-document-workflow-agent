@@ -11,7 +11,14 @@ from pydantic import BaseModel, Field
 
 
 class CreateJobRequest(BaseModel):
-    invoice_ref: str = Field(min_length=1, description="e.g. INV-1042")
+    #: Used to build a filesystem path (``<data>/invoices/<ref>.json``), so it is constrained
+    #: to a safe filename charset — no path separators or other traversal characters.
+    invoice_ref: str = Field(
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9._-]+$",
+        description="e.g. INV-1042 (letters, digits, dot, dash, underscore only)",
+    )
 
 
 class DecisionRequest(BaseModel):
