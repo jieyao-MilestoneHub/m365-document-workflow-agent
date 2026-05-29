@@ -202,6 +202,22 @@ def test_freight_within_tolerance_passes(policy):
     assert BlockingReason.UNPLANNED_CHARGE not in outcome.blocking_reasons
 
 
+def test_uom_mismatch_escalates(clean_invoice, policy):
+    report = ThreeWayMatchReport(
+        invoice_number="INV-1043", match_status=MatchStatus.PARTIAL,
+        lines=[LineMatch(
+            invoice_line_no=1, status=LineStatus.UNIT_VARIANCE,
+            within_tolerance=False, uom_mismatch=True,
+        )],
+    )
+    outcome = evaluate_outcome(
+        invoice=clean_invoice, match=report, variance=_clean_variance("INV-1043"),
+        posting=balanced_posting("INV-1043"), policy=policy,
+    )
+    assert outcome.decision is Decision.ESCALATE
+    assert BlockingReason.UOM_MISMATCH in outcome.blocking_reasons
+
+
 def test_empty_line_items_escalates_quality_fail(policy):
     invoice = VendorInvoice(
         vendor_name="Globex", invoice_number="INV-Q", invoice_date=date(2026, 5, 20),

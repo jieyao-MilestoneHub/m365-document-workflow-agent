@@ -23,6 +23,7 @@ Two vendor personas: **Globex** (clean) and **Contoso** (hold-listed). Run any s
 | INV-1057 | `po_ref` unreadable → agent asks → human supplies PO-5000 | **HOLD → PASS** (slot-fill) |
 | INV-1058 | vendor `Contoso` is on the hold list | **HOLD** · VENDOR_ON_HOLD_LIST |
 | INV-1059 | $75 freight charge line above the $25 freight tolerance | **HOLD** · UNPLANNED_CHARGE |
+| INV-1060 | WIDGET-A billed in `case` vs PO `ea`, no conversion factor | **ESCALATE** · UOM_MISMATCH |
 
 Demo arc: INV-1043 → **INV-1042** (the +6% money shot) → INV-1053 (line-level depth) →
 INV-1054 (guardrail overrides the LLM) → INV-1057 (human clears it) → INV-1056 (control catch).

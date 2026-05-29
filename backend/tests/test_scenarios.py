@@ -26,6 +26,7 @@ SCENARIOS = [
     ("INV-1057", PASS, None),                                       # slot-fill clears it
     ("INV-1058", HOLD, BlockingReason.VENDOR_ON_HOLD_LIST),        # vendor on hold
     ("INV-1059", HOLD, BlockingReason.UNPLANNED_CHARGE),           # freight charge over tolerance
+    ("INV-1060", ESCALATE, BlockingReason.UOM_MISMATCH),           # billed in case vs PO ea, no factor
 ]
 
 

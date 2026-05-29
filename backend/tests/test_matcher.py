@@ -118,6 +118,54 @@ def test_charge_line_skips_three_way_match():
     assert line.note is not None
 
 
+def _uom_invoice(uom: str, factor: str) -> VendorInvoice:
+    line = InvoiceLineItem(
+        line_no=1, sku="WIDGET-A", description="Widget A", quantity=Decimal("10"),
+        unit_price=Decimal("95.00"), line_total=Decimal("950.00"),
+        unit_of_measure=uom, uom_factor=Decimal(factor),
+    )
+    return VendorInvoice(
+        vendor_name="Globex", invoice_number="INV-U", invoice_date=date(2026, 5, 20),
+        currency="USD", subtotal=line.line_total, tax_total=Decimal("0"), total=line.line_total,
+        po_ref="PO-5000", grn_ref="GRN-7000", line_items=[line],
+    )
+
+
+_PO_EA = PurchaseOrder(po_number="PO-5000", vendor_name="Globex", currency="USD",
+                       lines=[POLine(sku="WIDGET-A", description="Widget A",
+                                     quantity=Decimal("10"), unit_price=Decimal("95.00"),
+                                     unit_of_measure="ea")])
+
+
+def test_uom_mismatch_flagged_without_conversion():
+    # invoice in "case", PO in "ea", no conversion factor → unreconcilable, escalate-worthy
+    matcher = PoGrnMatcher(_FakeKnowledge(_PO_EA, _FULL_GRN))
+    line = matcher.run(_envelope(_uom_invoice("case", "1"))).payload.lines[0]
+    assert line.uom_mismatch is True
+    assert line.status is LineStatus.UNIT_VARIANCE
+    assert line.within_tolerance is False
+
+
+def test_uom_reconciled_with_conversion_factor():
+    # a conversion factor bridges the differing units → not a mismatch
+    matcher = PoGrnMatcher(_FakeKnowledge(_PO_EA, _FULL_GRN))
+    # 1 case × factor 10 = 10 ea, matching the received quantity
+    line_item = InvoiceLineItem(
+        line_no=1, sku="WIDGET-A", description="Widget A", quantity=Decimal("1"),
+        unit_price=Decimal("95.00"), line_total=Decimal("95.00"),
+        unit_of_measure="case", uom_factor=Decimal("10"),
+    )
+    invoice = VendorInvoice(
+        vendor_name="Globex", invoice_number="INV-U", invoice_date=date(2026, 5, 20),
+        currency="USD", subtotal=Decimal("95.00"), tax_total=Decimal("0"), total=Decimal("95.00"),
+        po_ref="PO-5000", grn_ref="GRN-7000", line_items=[line_item],
+    )
+    line = matcher.run(_envelope(invoice)).payload.lines[0]
+    assert line.uom_mismatch is False
+    assert line.quantity_delta == Decimal("0")
+    assert line.status is LineStatus.MATCHED
+
+
 def test_unknown_vendor_sku_flags_alias_unresolved():
     # no alias for UNKNOWN-X; only the description rescues the match → needs human confirm
     matcher = PoGrnMatcher(_FakeKnowledge(PO, _FULL_GRN))
