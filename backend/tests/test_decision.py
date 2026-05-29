@@ -102,6 +102,19 @@ def test_vendor_on_hold_holds(policy):
     assert BlockingReason.VENDOR_ON_HOLD_LIST in outcome.blocking_reasons
 
 
+def test_over_billed_holds(clean_invoice, policy):
+    report = ThreeWayMatchReport(
+        invoice_number="INV-1043", match_status=MatchStatus.PARTIAL,
+        lines=[LineMatch(invoice_line_no=1, status=LineStatus.QUANTITY_VARIANCE, over_billed=True)],
+    )
+    outcome = evaluate_outcome(
+        invoice=clean_invoice, match=report, variance=_clean_variance("INV-1043"),
+        posting=balanced_posting("INV-1043"), policy=policy,
+    )
+    assert outcome.decision is Decision.HOLD
+    assert BlockingReason.OVER_BILLED_VS_RECEIPT in outcome.blocking_reasons
+
+
 def test_currency_mismatch_escalates(clean_invoice, policy):
     report = ThreeWayMatchReport(
         invoice_number="INV-1043", match_status=MatchStatus.PARTIAL,
