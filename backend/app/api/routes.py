@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from . import service
 from .models import CreateJobRequest, DecisionRequest
+from .sse import stream_job
 from .store import JobStore
 
 router = APIRouter(prefix="/api")
@@ -50,6 +51,14 @@ def get_job(job_id: str, store: JobStore = Depends(get_store)) -> dict:
     if record is None:
         raise HTTPException(status_code=404, detail=f"unknown job {job_id}")
     return record.detail
+
+
+@router.get("/jobs/{job_id}/stream")
+def stream(job_id: str, store: JobStore = Depends(get_store)):
+    record = store.get(job_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"unknown job {job_id}")
+    return stream_job(record)
 
 
 @router.post("/jobs/{job_id}/decision")
