@@ -1,0 +1,15 @@
+{
+  "vendor_name": "Globex",
+  "invoice_number": "INV-1042",
+  "invoice_date": "2026-05-20",
+  "currency": "USD",
+  "subtotal": "1107.00",
+  "tax_total": "0",
+  "total": "1107.00",
+  "po_ref": "PO-5000",
+  "grn_ref": "GRN-7000",
+  "line_items": [
+    { "line_no": 1, "sku": "WIDGET-A", "description": "Widget A", "quantity": "10", "unit_price": "100.70", "line_total": "1007.00" },
+    { "line_no": 2, "sku": "WIDGET-B", "description": "Widget B", "quantity": "5", "unit_price": "20.00", "line_total": "100.00" }
+  ]
+}

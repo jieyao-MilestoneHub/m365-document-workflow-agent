@@ -1,0 +1,27 @@
+{
+  "tolerance": {
+    "version": "2026.04.1",
+    "quantity_absolute": "0.5",
+    "price_absolute": "0.5",
+    "price_percent": "0.02"
+  },
+  "thresholds": {
+    "version": "2026.04.1",
+    "medium_threshold": "50.00",
+    "high_threshold": "500.00"
+  },
+  "gl_map": {
+    "version": "ap.gl.v1",
+    "ap_liability": "2100",
+    "expense_fallback": "5000",
+    "tax": "1360",
+    "overrides": {}
+  },
+  "vendors": {
+    "auto_post_vendors": [],
+    "hold_on_vendors": ["Contoso"],
+    "gray_zone_vendors": ["Acme-Lite"]
+  },
+  "valid_gl_accounts": ["2100", "5000", "1360"],
+  "closed_periods": []
+}
