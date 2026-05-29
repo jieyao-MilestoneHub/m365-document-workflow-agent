@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Local dev config — inherited from convilyn, contains internal references; keep out of
+# public history until scrubbed. See feedback-public-repo-git-hygiene memory.
+.claude/
+
+# Secrets & local config (NEVER commit — see .claude/rules/hackathon.md)
+.env
+.env.*
+!.env.example
+*.local
+
+# Azure / M365 tooling
+.deployment/
+env/.env.*.user
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
