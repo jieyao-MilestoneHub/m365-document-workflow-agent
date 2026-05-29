@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+import { AuditTrail } from "@/components/review/audit-trail";
 import { DecisionPanel } from "@/components/review/decision-panel";
 import { GLJournalPreview } from "@/components/review/gl-journal-preview";
 import { OutcomeBanner } from "@/components/review/outcome-banner";
 import { AgentReasoningTrace } from "@/components/review/reasoning-trace";
 import { ThreeWayMatchCanvas } from "@/components/review/three-way-canvas";
 import { VarianceEvidenceTable } from "@/components/review/variance-table";
+import { VendorPolicyPanel } from "@/components/review/vendor-policy";
 import { useJob } from "@/hooks/useJob";
 
 export default function ReviewPage() {
@@ -48,10 +50,12 @@ export default function ReviewPage() {
               </header>
 
               <OutcomeBanner outcome={job.outcome} />
+              <VendorPolicyPanel job={job} />
               <ThreeWayMatchCanvas invoice={job.invoice} match={job.match} />
               <VarianceEvidenceTable variance={job.variance} currency={currency} />
               <GLJournalPreview posting={job.posting} />
               {jobId && <AgentReasoningTrace jobId={jobId} />}
+              <AuditTrail history={job.handoff_history} />
               <DecisionPanel humanDecision={job.human_decision} onDecide={decide} />
             </>
           );
