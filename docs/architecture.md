@@ -90,49 +90,45 @@ flowchart TB
 
 ## Walk-through
 
-**Surface (gated).** In the target state, an approver asks *"Process invoice INV-1042"* inside
-**M365 Copilot or Teams**. An **M365 Agents-SDK** custom-engine-agent proxy translates that into a
-call to the backend and renders results — including slot-fill prompts — as Adaptive Cards. This
-surface is designed but gated on tenant/Copilot provisioning; today the same backend is driven by
-the CLI, the tests, and the Next.js console.
+**Surface (gated).** In the target state an approver asks *"Process invoice INV-1042"* inside
+**M365 Copilot or Teams**; an **M365 Agents-SDK** proxy calls the backend and renders results —
+including slot-fill prompts — as Adaptive Cards. Today the same backend is driven by the CLI, the
+tests, and the Next.js console.
 
-**API (built).** A **FastAPI** service exposes the offline runner: list `scenarios`, create and
-fetch `jobs`, record a human `decision`, and — the centerpiece — a **Server-Sent Events** stream
-that emits one `trace` event per supervisor step followed by a terminal `completed` event. The
-wire contract is identical whether the run is instant (offline replay) or later pushed live behind
-Azure latency, so the frontend never changes.
+**API (built).** A **FastAPI** service exposes the offline runner: list scenarios, create and fetch
+jobs, record a human decision, and — the centerpiece — a **Server-Sent Events** stream emitting one
+`trace` event per supervisor step then a terminal `completed`. The wire contract is identical
+whether the run is instant offline replay or later pushed live behind Azure latency, so the frontend
+never changes.
 
-**Orchestrator core (built, offline, 86 tests).** A **Magentic-style supervisor** loop asks a brain
-for the next action and emits exactly one move per turn from a closed set —
-`delegate` / `peer-review` / `request-input` / `escalate` / `finalize`. It routes over a registry
-of **5 specialists** in dependency order:
-`invoice_extractor → po_grn_matcher → variance_assessor → posting_preparer → exception_reviewer`.
-State threads functionally through an append-only **envelope** (handoff history, per-role results,
-exception ledger, budget snapshot).
+**Orchestrator core (built, offline, 86 tests).** A **Magentic-style supervisor** asks a brain for
+the next action and emits one move per turn from a closed set —
+`delegate` / `peer-review` / `request-input` / `escalate` / `finalize` — routing over **5
+specialists** in dependency order
+(`invoice_extractor → po_grn_matcher → variance_assessor → posting_preparer → exception_reviewer`).
+State threads through an append-only **envelope** (handoff history, per-role results, exception
+ledger, budget).
 
-**Deterministic guardrails are authoritative over the LLM.** Before every delegation a **pre-flight**
-enforces a tool-call budget (25), a per-role visit cap (3), and repeated-handoff **cycle detection**;
-any veto routes the run to a human. The final `pass / hold / escalate` verdict comes from a
-**deterministic decision matrix** in pure code — the exception reviewer writes the human-readable
-summary, but it cannot change the verdict. Combined with Pydantic invariants (money as `Decimal`,
-posting balanced to the cent, tolerance bounds), this guarantees a variance never silently
-auto-posts.
+**Guardrails are authoritative over the LLM.** A pre-flight before every delegation enforces a
+tool-call budget (25), a per-role visit cap (3), and **cycle detection**; any veto routes to a
+human. The final `pass / hold / escalate` verdict comes from a **deterministic decision matrix** —
+the exception reviewer writes the summary but cannot change the verdict. With the Pydantic
+invariants (money as `Decimal`, posting balanced to the cent, tolerance bounds), a variance never
+silently auto-posts.
 
 **Ports & adapters (Dependency Inversion).** Specialists and the supervisor depend only on narrow
 **port protocols** — `ExtractorPort`, `KnowledgePort`, `LedgerPort`, `ReasoningPort`,
-`HumanInputPort` (plus injected `Clock`/`IdGen`). This seam is what lets the project ship a complete,
-secure, demoable offline product independent of cloud provisioning.
+`HumanInputPort` (plus injected `Clock`/`IdGen`). This seam lets the project ship a complete,
+demoable offline product independent of cloud provisioning.
 
-**Adapters: built vs. gated.** Today the ports are satisfied by **offline fixture adapters** backed
-by synthetic JSON in `sample-data/` — first-class implementations that run the full pipeline and
-document the exact data shapes the cloud adapters must produce. The **Azure adapters** (gated) drop
-in behind the same contracts with **no orchestrator change**: Document Intelligence as the
-extractor, **Foundry IQ** as the knowledge port (grounded retrieval + clickable citations), and
-Azure OpenAI as the reasoning port (advisory narration only). The `ReasoningPort` deliberately
-produces text, never decisions — the controls always decide.
+**Adapters: built vs. gated.** Today the ports are satisfied by **fixture adapters** over synthetic
+JSON in `sample-data/` — first-class implementations that run the full pipeline and pin the data
+shapes the cloud adapters must produce. The **Azure adapters** (gated) drop in behind the same
+contracts with **no orchestrator change**: Document Intelligence as extractor, **Foundry IQ** as the
+knowledge port (grounded retrieval + clickable citations), Azure OpenAI as the reasoning port. The
+`ReasoningPort` produces text, never decisions — the controls always decide.
 
-**Console (built — scaffold).** A **Next.js** approver console consumes the SSE reasoning stream and
-the REST endpoints through a single typed, **zod-validated** API client (every response is parsed
-before it reaches the UI). It ships with a hardened security baseline — a tight Content-Security-Policy,
-`X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy` — and is CSP-configured to be
-embeddable as a Microsoft Teams personal tab.
+**Console (built — scaffold).** A **Next.js** approver console consumes the SSE stream and the REST
+endpoints through one **zod-validated** API client (every response is parsed before it reaches the
+UI). It ships a hardened baseline — a tight CSP, `X-Content-Type-Options`, `Referrer-Policy`,
+`Permissions-Policy` — with `frame-ancestors` scoped to embed as a Microsoft Teams personal tab.
