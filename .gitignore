@@ -36,6 +36,7 @@ env/.env.*.user
 # Scratch / working notes (not for public history)
 tmp-*
 *.scratch.md
+PLAN.md
 
 # OS / editor
 .DS_Store
