@@ -120,7 +120,8 @@ The catalog *proves* behaviour on the exceptions that matter (full table in
 ## Architecture
 
 See [`docs/architecture.md`](docs/architecture.md) for the Mermaid diagram (renders on GitHub) and a
-walk-through, and [`docs/ROADMAP.md`](docs/ROADMAP.md) for the workstream × phase plan.
+walk-through, [`docs/ROADMAP.md`](docs/ROADMAP.md) for the workstream × phase plan, and
+[`docs/SUBMISSION.md`](docs/SUBMISSION.md) for the hackathon submission checklist.
 
 ```text
 M365 Copilot / Teams  →  M365 Agents-SDK proxy  →  FastAPI (+ SSE)  →  Magentic supervisor
