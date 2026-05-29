@@ -47,11 +47,17 @@ class PoGrnMatcher:
         po, po_cites = self._knowledge.get_purchase_order(po_ref=invoice.po_ref)
         grn, grn_cites = self._knowledge.get_goods_receipt(grn_ref=invoice.grn_ref)
 
-        lines = [self._match_line(li, po, grn, tolerance) for li in invoice.line_items]
+        currency_mismatch = po is not None and invoice.currency != po.currency
+        lines = [
+            self._match_line(li, po, grn, tolerance, currency_mismatch)
+            for li in invoice.line_items
+        ]
         report = ThreeWayMatchReport(
             invoice_number=invoice.invoice_number,
             po_number=po.po_number if po else None,
             grn_number=grn.grn_number if grn else None,
+            po_currency=po.currency if po else None,
+            currency_mismatch=currency_mismatch,
             match_status=roll_up_match_status(
                 has_line_items=bool(invoice.line_items),
                 po_present=po is not None,
@@ -70,7 +76,8 @@ class PoGrnMatcher:
             role=self.role, payload=report, citations=tuple(report.citations), summary=summary
         )
 
-    def _match_line(self, li, po: PurchaseOrder | None, grn: GoodsReceiptNote | None, tolerance):
+    def _match_line(self, li, po: PurchaseOrder | None, grn: GoodsReceiptNote | None,
+                    tolerance, currency_mismatch: bool = False):
         po_idx = _find_index(li.sku, li.description, po.lines) if po else None
         grn_idx = _find_index(li.sku, li.description, grn.lines) if grn else None
 
@@ -83,7 +90,9 @@ class PoGrnMatcher:
 
         po_line, grn_line = po.lines[po_idx], grn.lines[grn_idx]
         qty_delta = li.quantity - grn_line.received_quantity
-        price_delta = li.unit_price - po_line.unit_price
+        # Cross-currency price deltas are meaningless; the report-level currency_mismatch
+        # flag escalates instead, so suppress the per-line price comparison here.
+        price_delta = Decimal("0") if currency_mismatch else li.unit_price - po_line.unit_price
         within = evaluate_line_tolerance(
             quantity_delta=qty_delta, price_delta=price_delta,
             po_unit_price=po_line.unit_price, tolerance=tolerance,

@@ -37,6 +37,13 @@ class KnowledgePort(Protocol):
 
 
 @runtime_checkable
+class LedgerPort(Protocol):
+    """Check whether an invoice was already posted (duplicate-payment control)."""
+
+    def seen_invoice(self, *, vendor_name: str, invoice_number: str) -> bool: ...
+
+
+@runtime_checkable
 class ReasoningPort(Protocol):
     """Produce a short natural-language rationale for a step (e.g. Azure OpenAI).
 

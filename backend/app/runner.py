@@ -12,6 +12,7 @@ from app.adapters.fixtures import (
     FixedClock,
     FixtureExtractor,
     FixtureKnowledge,
+    FixtureLedger,
     ScriptedReasoner,
     SeqIdGen,
 )
@@ -39,13 +40,14 @@ DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "sample-data"
 def default_registry(base_dir: str | Path) -> tuple[dict, FixtureKnowledge]:
     knowledge = FixtureKnowledge(base_dir)
     extractor = FixtureExtractor(base_dir)
+    ledger = FixtureLedger(base_dir)
     reasoning = ScriptedReasoner()
     registry = {
         INVOICE_EXTRACTOR: InvoiceExtractor(extractor),
         PO_GRN_MATCHER: PoGrnMatcher(knowledge),
         VARIANCE_ASSESSOR: VarianceAssessor(),
         POSTING_PREPARER: PostingPreparer(),
-        EXCEPTION_REVIEWER: ExceptionReviewer(reasoning),
+        EXCEPTION_REVIEWER: ExceptionReviewer(reasoning, ledger),
     }
     return registry, knowledge
 

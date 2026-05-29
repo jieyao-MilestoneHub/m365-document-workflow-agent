@@ -7,6 +7,7 @@ cannot override a violation — this is the Reliability & Safety backbone.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 from app.schemas.enums import BlockingReason
 from app.schemas.invoice import VendorInvoice
@@ -56,6 +57,23 @@ def check_gl_accounts(draft: PostingDraft, policy: PolicyBundle) -> Verdict:
                 BlockingReason.GL_ACCOUNT_INVALID,
                 f"GL account {line.gl_account!r} not in chart of accounts",
             )
+    return Verdict.passed()
+
+
+def check_tax_consistency(invoice: VendorInvoice) -> Verdict:
+    """When line tax rates are present, the invoice tax_total must match their sum.
+
+    Skipped when no line carries a tax_rate (nothing authoritative to check against).
+    """
+    rated = [li for li in invoice.line_items if li.tax_rate is not None]
+    if not rated:
+        return Verdict.passed()
+    expected = sum((li.line_total * li.tax_rate for li in rated), Decimal("0"))
+    if not money_close(invoice.tax_total, expected):
+        return Verdict.violation(
+            BlockingReason.TAX_DISCREPANCY,
+            f"tax_total {invoice.tax_total} != sum(line tax) {expected}",
+        )
     return Verdict.passed()
 
 

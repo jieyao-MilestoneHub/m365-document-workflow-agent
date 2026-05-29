@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from ..decision import evaluate_outcome
 from ..envelope import MultiAgentEnvelope, SpecialistResult
-from ..ports import ReasoningPort
+from ..ports import LedgerPort, ReasoningPort
 from ..roles import (
     EXCEPTION_REVIEWER,
     INVOICE_EXTRACTOR,
@@ -21,16 +21,28 @@ from ..roles import (
 class ExceptionReviewer:
     role = EXCEPTION_REVIEWER
 
-    def __init__(self, reasoning: ReasoningPort | None = None) -> None:
+    def __init__(
+        self, reasoning: ReasoningPort | None = None, ledger: LedgerPort | None = None
+    ) -> None:
         self._reasoning = reasoning
+        self._ledger = ledger
 
     def run(self, envelope: MultiAgentEnvelope) -> SpecialistResult:
+        invoice = envelope.payload_for(INVOICE_EXTRACTOR)
+        is_duplicate = bool(
+            invoice
+            and self._ledger
+            and self._ledger.seen_invoice(
+                vendor_name=invoice.vendor_name, invoice_number=invoice.invoice_number
+            )
+        )
         outcome = evaluate_outcome(
-            invoice=envelope.payload_for(INVOICE_EXTRACTOR),
+            invoice=invoice,
             match=envelope.payload_for(PO_GRN_MATCHER),
             variance=envelope.payload_for(VARIANCE_ASSESSOR),
             posting=envelope.payload_for(POSTING_PREPARER),
             policy=envelope.policy,
+            is_duplicate=is_duplicate,
         )
         if self._reasoning is not None:
             narrated = self._reasoning.narrate(

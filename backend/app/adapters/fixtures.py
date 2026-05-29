@@ -6,6 +6,7 @@ produce.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from app.schemas.citation import Citation
@@ -68,6 +69,23 @@ def _po_snippet(po: PurchaseOrder) -> str:
 
 def _grn_snippet(grn: GoodsReceiptNote) -> str:
     return "; ".join(f"{ln.sku or ln.description} received {ln.received_quantity}" for ln in grn.lines)
+
+
+class FixtureLedger:
+    """LedgerPort backed by ``<base>/posted_ledger.json`` (a list of {vendor_name, invoice_number})."""
+
+    def __init__(self, base_dir: str | Path) -> None:
+        self._base = Path(base_dir)
+
+    def seen_invoice(self, *, vendor_name: str, invoice_number: str) -> bool:
+        path = self._base / "posted_ledger.json"
+        if not path.exists():
+            return False
+        entries = json.loads(path.read_text(encoding="utf-8"))
+        return any(
+            e.get("vendor_name") == vendor_name and e.get("invoice_number") == invoice_number
+            for e in entries
+        )
 
 
 class FixedClock:

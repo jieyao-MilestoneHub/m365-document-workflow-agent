@@ -77,6 +77,12 @@ class BlockingReason(str, Enum):
     # Vendor policy
     VENDOR_ON_HOLD_LIST = "VENDOR_ON_HOLD_LIST"
     VENDOR_GRAY_ZONE = "VENDOR_GRAY_ZONE"
+    # Line-level / data exceptions
+    OVER_BILLED_VS_RECEIPT = "OVER_BILLED_VS_RECEIPT"
+    SKU_ALIAS_UNRESOLVED = "SKU_ALIAS_UNRESOLVED"
+    CURRENCY_MISMATCH = "CURRENCY_MISMATCH"
+    DUPLICATE_INVOICE = "DUPLICATE_INVOICE"
+    TAX_DISCREPANCY = "TAX_DISCREPANCY"
     # Quality warnings
     INVOICE_QUALITY_WARN = "INVOICE_QUALITY_WARN"
     INVOICE_MISSING_FIELDS = "INVOICE_MISSING_FIELDS"
@@ -97,5 +103,7 @@ ESCALATE_REASONS: frozenset[BlockingReason] = frozenset(
         BlockingReason.POSTING_PERIOD_CLOSED,
         BlockingReason.SUPERVISOR_GUARDRAIL_VETO,
         BlockingReason.SPECIALIST_FAILED,
+        BlockingReason.CURRENCY_MISMATCH,
+        BlockingReason.DUPLICATE_INVOICE,
     }
 )

@@ -20,7 +20,12 @@ from app.schemas.policy import PolicyBundle
 from app.schemas.posting import PostingDraft
 from app.schemas.variance import VarianceReport
 
-from .validators import check_gl_accounts, check_posting_balance, check_posting_period
+from .validators import (
+    check_gl_accounts,
+    check_posting_balance,
+    check_posting_period,
+    check_tax_consistency,
+)
 
 # Suggested resolutions keyed by reason, surfaced to the human reviewer.
 _RESOLUTIONS: dict[BlockingReason, str] = {
@@ -36,6 +41,11 @@ _RESOLUTIONS: dict[BlockingReason, str] = {
     BlockingReason.VENDOR_ON_HOLD_LIST: "Vendor is on hold; clear the hold before posting.",
     BlockingReason.VENDOR_GRAY_ZONE: "Vendor requires extra scrutiny; manual approval needed.",
     BlockingReason.INVOICE_MISSING_FIELDS: "Fill the missing invoice fields and re-run.",
+    BlockingReason.CURRENCY_MISMATCH: "Invoice and PO currencies differ; resolve FX before matching.",
+    BlockingReason.DUPLICATE_INVOICE: "Invoice already posted; reject as a duplicate payment.",
+    BlockingReason.TAX_DISCREPANCY: "Reconcile the invoice tax against the line tax rates.",
+    BlockingReason.OVER_BILLED_VS_RECEIPT: "Billed quantity exceeds received; confirm receipt before posting.",
+    BlockingReason.SKU_ALIAS_UNRESOLVED: "Confirm the vendor-SKU to internal-SKU mapping.",
 }
 
 
@@ -63,10 +73,28 @@ def evaluate_outcome(
     variance: VarianceReport | None,
     posting: PostingDraft | None,
     policy: PolicyBundle,
+    is_duplicate: bool = False,
 ) -> ValidationOutcome:
     """Compute the authoritative outcome from the upstream specialist payloads."""
     inv_no = invoice.invoice_number if invoice else (match.invoice_number if match else "UNKNOWN")
     tickets: list[ExceptionTicket] = []
+
+    # --- Duplicate / currency (irreversible controls → escalate) ---------------
+    if is_duplicate:
+        tickets.append(_ticket(inv_no, BlockingReason.DUPLICATE_INVOICE, Severity.HIGH))
+    if match is not None and match.currency_mismatch:
+        tickets.append(
+            _ticket(inv_no, BlockingReason.CURRENCY_MISMATCH, Severity.HIGH,
+                    evidence={"invoice_currency": invoice.currency if invoice else None,
+                              "po_currency": match.po_currency})
+        )
+
+    # --- Tax consistency -------------------------------------------------------
+    if invoice is not None:
+        tax = check_tax_consistency(invoice)
+        if not tax.ok:
+            tickets.append(_ticket(inv_no, BlockingReason.TAX_DISCREPANCY, Severity.MEDIUM,
+                                   evidence={"detail": tax.detail}))
 
     # --- Upstream completeness -------------------------------------------------
     if invoice is None:

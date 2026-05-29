@@ -37,5 +37,7 @@ class ThreeWayMatchReport(BaseModel):
     grn_number: str | None = None
     match_status: MatchStatus
     lines: list[LineMatch] = Field(default_factory=list)
+    po_currency: str | None = None
+    currency_mismatch: bool = False
     tolerance_version: str = "2026.04.1"
     citations: list[Citation] = Field(default_factory=list)
