@@ -75,3 +75,5 @@ class PolicyBundle(BaseModel):
     vendors: VendorConfig = Field(default_factory=VendorConfig)
     valid_gl_accounts: frozenset[str] = Field(default_factory=frozenset)
     closed_periods: frozenset[str] = Field(default_factory=frozenset, description="YYYY-MM strings")
+    #: vendor SKU -> internal SKU (so vendor item codes resolve to the catalogue)
+    sku_aliases: dict[str, str] = Field(default_factory=dict)

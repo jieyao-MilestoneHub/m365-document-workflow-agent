@@ -129,6 +129,11 @@ def evaluate_outcome(
             tickets.append(
                 _ticket(inv_no, BlockingReason.OVER_BILLED_VS_RECEIPT, Severity.MEDIUM, over_lines)
             )
+        alias_lines = [m.invoice_line_no for m in match.lines if m.alias_unresolved]
+        if alias_lines:
+            tickets.append(
+                _ticket(inv_no, BlockingReason.SKU_ALIAS_UNRESOLVED, Severity.LOW, alias_lines)
+            )
 
     # --- Posting / GL ----------------------------------------------------------
     if posting is not None:

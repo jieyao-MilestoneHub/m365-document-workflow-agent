@@ -19,17 +19,23 @@ from ..ports import KnowledgePort
 from ..roles import INVOICE_EXTRACTOR, PO_GRN_MATCHER
 
 
-def _find_index(sku: str | None, description: str, candidates: list) -> int | None:
-    """Resolve a reference line by sku, then case-insensitive description, then None."""
-    if sku:
+def _find_index(
+    sku: str | None, description: str, candidates: list, aliases: dict[str, str]
+) -> tuple[int | None, str | None]:
+    """Resolve a reference line, returning (index, matched_by).
+
+    matched_by is "sku" (direct), "alias" (vendor SKU mapped to internal), or "description".
+    """
+    internal = aliases.get(sku, sku) if sku else None
+    if internal:
         for i, c in enumerate(candidates):
-            if c.sku and c.sku == sku:
-                return i
+            if c.sku and c.sku == internal:
+                return i, ("alias" if internal != sku else "sku")
     desc = description.strip().lower()
     for i, c in enumerate(candidates):
         if c.description.strip().lower() == desc:
-            return i
-    return None
+            return i, "description"
+    return None, None
 
 
 class PoGrnMatcher:
@@ -49,8 +55,9 @@ class PoGrnMatcher:
 
         currency_mismatch = po is not None and invoice.currency != po.currency
         invoiced_to_date = self._knowledge.get_invoiced_to_date(po_ref=invoice.po_ref)
+        aliases = envelope.policy.sku_aliases
         lines = [
-            self._match_line(li, po, grn, tolerance, currency_mismatch, invoiced_to_date)
+            self._match_line(li, po, grn, tolerance, currency_mismatch, invoiced_to_date, aliases)
             for li in invoice.line_items
         ]
         report = ThreeWayMatchReport(
@@ -79,9 +86,11 @@ class PoGrnMatcher:
 
     def _match_line(self, li, po: PurchaseOrder | None, grn: GoodsReceiptNote | None,
                     tolerance, currency_mismatch: bool = False,
-                    invoiced_to_date: dict[str, Decimal] | None = None):
-        po_idx = _find_index(li.sku, li.description, po.lines) if po else None
-        grn_idx = _find_index(li.sku, li.description, grn.lines) if grn else None
+                    invoiced_to_date: dict[str, Decimal] | None = None,
+                    aliases: dict[str, str] | None = None):
+        aliases = aliases or {}
+        po_idx, po_method = _find_index(li.sku, li.description, po.lines, aliases) if po else (None, None)
+        grn_idx, _ = _find_index(li.sku, li.description, grn.lines, aliases) if grn else (None, None)
 
         if po_idx is None:
             return LineMatch(invoice_line_no=li.line_no, status=LineStatus.MISSING_IN_PO,
@@ -91,6 +100,8 @@ class PoGrnMatcher:
                              status=LineStatus.MISSING_IN_GRN, note="no matching GRN line")
 
         po_line, grn_line = po.lines[po_idx], grn.lines[grn_idx]
+        resolved_sku = aliases.get(li.sku, li.sku) if li.sku else None
+        alias_unresolved = po_method == "description" and bool(li.sku) and li.sku not in aliases
         qty_delta = li.quantity - grn_line.received_quantity
         # Cross-currency price deltas are meaningless; the report-level currency_mismatch
         # flag escalates instead, so suppress the per-line price comparison here.
@@ -114,6 +125,8 @@ class PoGrnMatcher:
             invoiced_to_date_quantity=billed_before,
             remaining_billable_quantity=remaining_billable,
             over_billed=over_billed,
+            resolved_sku=resolved_sku,
+            alias_unresolved=alias_unresolved,
         )
 
     @staticmethod

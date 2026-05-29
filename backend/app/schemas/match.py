@@ -30,6 +30,10 @@ class LineMatch(BaseModel):
     remaining_billable_quantity: Decimal | None = None
     #: True when this invoice bills more than the remaining received-but-unbilled quantity
     over_billed: bool = False
+    #: internal SKU the line resolved to (via alias), for the evidence chain
+    resolved_sku: str | None = None
+    #: True when only a description fallback matched an unknown vendor SKU (needs human confirm)
+    alias_unresolved: bool = False
     note: str | None = None
 
 
