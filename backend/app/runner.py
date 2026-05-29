@@ -5,6 +5,7 @@ is the only change needed to go from offline to cloud — the orchestrator stays
 """
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from pathlib import Path
 
@@ -34,8 +35,33 @@ from app.orchestrator.specialists.posting_preparer import PostingPreparer
 from app.orchestrator.specialists.variance_assessor import VarianceAssessor
 from app.orchestrator.supervisor import Supervisor, SupervisorRun, TraceEvent
 
-#: repo-root/sample-data
-DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "sample-data"
+#: Name of the synthetic-data directory shipped alongside the code.
+_SAMPLE_DATA_DIRNAME = "sample-data"
+
+
+def _resolve_sample_data_dir() -> Path:
+    """Locate ``sample-data/`` without assuming a fixed folder depth.
+
+    Resolution order, so the package can be relocated within (or vendored out of)
+    the repo without breaking data lookup:
+
+    1. the ``AP_SAMPLE_DATA_DIR`` environment variable, if set;
+    2. the nearest ``sample-data/`` directory found by walking up from this file;
+    3. the historical ``repo-root/sample-data`` layout, as a last-resort fallback.
+    """
+    override = os.environ.get("AP_SAMPLE_DATA_DIR")
+    if override:
+        return Path(override)
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / _SAMPLE_DATA_DIRNAME
+        if candidate.is_dir():
+            return candidate
+    return here.parents[2] / _SAMPLE_DATA_DIRNAME
+
+
+#: Default synthetic-data directory (resolved robustly; see _resolve_sample_data_dir).
+DEFAULT_DATA_DIR = _resolve_sample_data_dir()
 
 
 def default_registry(base_dir: str | Path) -> tuple[dict, FixtureKnowledge]:
