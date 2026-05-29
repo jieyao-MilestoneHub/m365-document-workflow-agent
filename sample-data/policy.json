@@ -23,5 +23,6 @@
     "gray_zone_vendors": ["Acme-Lite"]
   },
   "valid_gl_accounts": ["2100", "5000", "1360"],
-  "closed_periods": []
+  "closed_periods": [],
+  "sku_aliases": { "GLX-WA-01": "WIDGET-A" }
 }

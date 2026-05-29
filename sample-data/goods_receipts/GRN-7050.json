@@ -1,0 +1,7 @@
+{
+  "grn_number": "GRN-7050",
+  "receipt_date": "2026-05-18",
+  "lines": [
+    { "sku": "WIDGET-A", "description": "Widget A", "received_quantity": "6" }
+  ]
+}

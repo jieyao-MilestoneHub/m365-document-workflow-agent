@@ -1,0 +1,8 @@
+{
+  "po_number": "PO-5053",
+  "vendor_name": "Globex",
+  "currency": "USD",
+  "lines": [
+    { "sku": "WIDGET-A", "description": "Widget A", "quantity": "10", "unit_price": "95.00" }
+  ]
+}
