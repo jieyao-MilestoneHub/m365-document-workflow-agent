@@ -17,6 +17,7 @@ class LineMatch(BaseModel):
     invoice_line_no: int
     po_line_idx: int | None = None
     grn_line_idx: int | None = None
+    po_unit_price: Decimal | None = None
     status: LineStatus
     #: invoice.quantity - grn.received_quantity (signed; + = over-receipt)
     quantity_delta: Decimal = Decimal("0")

@@ -80,6 +80,9 @@ class BlockingReason(str, Enum):
     # Quality warnings
     INVOICE_QUALITY_WARN = "INVOICE_QUALITY_WARN"
     INVOICE_MISSING_FIELDS = "INVOICE_MISSING_FIELDS"
+    # Orchestration-level failures
+    SUPERVISOR_GUARDRAIL_VETO = "SUPERVISOR_GUARDRAIL_VETO"
+    SPECIALIST_FAILED = "SPECIALIST_FAILED"
 
 
 #: Blocking reasons that force an escalate (vs a hold).
@@ -92,5 +95,7 @@ ESCALATE_REASONS: frozenset[BlockingReason] = frozenset(
         BlockingReason.POSTING_DRAFT_UNBALANCED,
         BlockingReason.GL_ACCOUNT_INVALID,
         BlockingReason.POSTING_PERIOD_CLOSED,
+        BlockingReason.SUPERVISOR_GUARDRAIL_VETO,
+        BlockingReason.SPECIALIST_FAILED,
     }
 )

@@ -145,7 +145,7 @@ def _assemble(invoice_number: str, tickets: list[ExceptionTicket]) -> Validation
         decision=decision,
         confidence=0.5 if escalate else 0.8,
         blocking_reasons=reasons,
-        summary=f"{decision.value.title()} — {reason_list}.",
+        summary=f"{decision.value.title()} - {reason_list}.",
         escalation_target="ap_manager" if escalate else "process_owner",
         exception_tickets=tickets,
     )
