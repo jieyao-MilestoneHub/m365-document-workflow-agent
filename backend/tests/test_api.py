@@ -4,6 +4,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api import service
 from app.api.app import create_app
 
 
@@ -84,3 +85,33 @@ def test_stream_emits_trace_then_completed(client):
 
 def test_stream_unknown_job_404(client):
     assert client.get("/api/jobs/deadbeef/stream").status_code == 404
+
+
+# --- security: invoice_ref must not allow path traversal -----------------------
+
+@pytest.mark.parametrize(
+    "evil",
+    [
+        "../../../../etc/passwd",
+        "..\\..\\..\\windows\\win.ini",
+        "foo/bar",
+        "/etc/hosts",
+        "a/../b",
+    ],
+)
+def test_invoice_ref_with_separators_rejected(client, evil):
+    # path separators are outside the allowed charset → rejected by validation (422),
+    # before any filesystem access happens
+    assert client.post("/api/jobs", json={"invoice_ref": evil}).status_code == 422
+
+
+def test_run_job_containment_guard_blocks_escape(sample_data_dir):
+    # defense in depth: even bypassing the request model, the service refuses a ref that
+    # resolves outside the invoices directory (raises 404-equivalent, never reads the file)
+    with pytest.raises(FileNotFoundError):
+        service.run_job("../../../../etc/passwd", base_dir=sample_data_dir)
+
+
+def test_valid_invoice_ref_still_accepted(client):
+    # the hardening must not break a legitimate id
+    assert client.post("/api/jobs", json={"invoice_ref": "INV-1043"}).status_code == 200
