@@ -9,8 +9,12 @@ import {
   HealthSchema,
   JobDetailSchema,
   ScenarioInfoSchema,
+  StreamCompletedSchema,
+  TraceEventSchema,
   type JobDetail,
   type ScenarioInfo,
+  type StreamCompleted,
+  type TraceEvent,
 } from "./types";
 
 export class ApiError extends Error {
@@ -46,6 +50,43 @@ export interface DecisionInput {
   note?: string;
 }
 
+export interface StreamHandlers {
+  onTrace: (event: TraceEvent) => void;
+  onCompleted: (event: StreamCompleted) => void;
+  onError: (error: Error) => void;
+}
+
+/**
+ * Open the reasoning-trace SSE stream. Constructing the EventSource here (not in the hook)
+ * keeps this module the single network boundary (DIP). Returns a disposer the caller invokes
+ * on unmount. Each event's JSON payload is zod-parsed before reaching the UI.
+ */
+function openStream(jobId: string, handlers: StreamHandlers): () => void {
+  const source = new EventSource(`${API_BASE}/api/jobs/${encodeURIComponent(jobId)}/stream`);
+  source.addEventListener("trace", (e) => {
+    try {
+      handlers.onTrace(TraceEventSchema.parse(JSON.parse((e as MessageEvent).data)));
+    } catch (cause) {
+      handlers.onError(cause as Error);
+    }
+  });
+  source.addEventListener("completed", (e) => {
+    try {
+      handlers.onCompleted(StreamCompletedSchema.parse(JSON.parse((e as MessageEvent).data)));
+    } catch (cause) {
+      handlers.onError(cause as Error);
+    } finally {
+      source.close();
+    }
+  });
+  source.onerror = () => {
+    // EventSource auto-reconnects; once the server has sent `completed` we've already closed.
+    if (source.readyState === EventSource.CLOSED) return;
+    handlers.onError(new Error("reasoning stream connection error"));
+  };
+  return () => source.close();
+}
+
 export const api = {
   health: () => request("/api/health", HealthSchema),
   scenarios: (): Promise<ScenarioInfo[]> => request("/api/scenarios", z.array(ScenarioInfoSchema)),
@@ -55,6 +96,6 @@ export const api = {
     request(`/api/jobs/${encodeURIComponent(jobId)}`, JobDetailSchema),
   decide: (jobId: string, input: DecisionInput): Promise<JobDetail> =>
     request(`/api/jobs/${encodeURIComponent(jobId)}/decision`, JobDetailSchema, jsonBody(input)),
-  /** SSE endpoint URL; the EventSource is created in the client hook. */
-  streamUrl: (jobId: string): string => `${API_BASE}/api/jobs/${encodeURIComponent(jobId)}/stream`,
+  /** Open the reasoning-trace SSE stream; returns a disposer to close it. */
+  openStream,
 };
