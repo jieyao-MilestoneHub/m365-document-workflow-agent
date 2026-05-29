@@ -13,7 +13,6 @@ from app.schemas.enums import (
 )
 from app.schemas.invoice import InvoiceLineItem, VendorInvoice
 from app.schemas.match import LineMatch, ThreeWayMatchReport
-from app.schemas.policy import PolicyBundle
 from app.schemas.variance import LineVariance, VarianceReport
 
 from .conftest import balanced_posting, unbalanced_posting

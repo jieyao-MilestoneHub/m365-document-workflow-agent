@@ -89,6 +89,8 @@ def _run(human):
 def test_slot_fill_resolves_and_passes():
     result = _run(ScriptedHumanInput({"po_ref": "PO-5000"}))
     assert result.outcome.decision is Decision.PASS
+    # the supplied po_ref must clear the exception entirely, not merely flip the verdict
+    assert result.outcome.blocking_reasons == []
 
 
 def test_slot_fill_emits_request_input_event():

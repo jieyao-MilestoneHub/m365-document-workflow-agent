@@ -13,6 +13,9 @@ def test_cli_clean_invoice_reports_pass(sample_data_dir, capsys):
     out = capsys.readouterr().out
     assert exit_code == 0
     assert "Decision: PASS" in out
+    # the CLI prints the confidence and the human-readable summary, not just the verdict
+    assert "confidence" in out
+    assert "summary:" in out
 
 
 def test_cli_variance_invoice_reports_hold_with_reason_and_citation(sample_data_dir, capsys):
@@ -23,3 +26,5 @@ def test_cli_variance_invoice_reports_hold_with_reason_and_citation(sample_data_
     assert "VARIANCE_OUTSIDE_TOLERANCE" in out
     # the matcher attaches PO/GRN citations, which the CLI prints under "citations:"
     assert "citations:" in out
+    assert "PO-5000" in out
+    assert "GRN-7000" in out
