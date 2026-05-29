@@ -1,4 +1,6 @@
 import { Badge } from "@/components/ui/badge";
+import { ScaleIcon } from "@/components/ui/icons";
+import { Section } from "@/components/ui/section";
 import { formatMoney, formatQuantity, formatSignedNumber } from "@/lib/format";
 import { lineStatusMeta } from "@/lib/registry";
 import type { LineMatch, ThreeWayMatchReport, VendorInvoice } from "@/lib/types";
@@ -24,10 +26,9 @@ export function ThreeWayMatchCanvas({
 }) {
   if (!match) {
     return (
-      <section className="rounded-lg border border-slate-200 bg-white p-5">
-        <h3 className="text-sm font-semibold text-slate-800">Three-way match</h3>
-        <p className="mt-2 text-sm text-slate-500">No match report available for this job.</p>
-      </section>
+      <Section title="Three-way match" icon={ScaleIcon}>
+        <p className="text-sm text-muted">No match report available for this job.</p>
+      </Section>
     );
   }
 
@@ -36,69 +37,85 @@ export function ThreeWayMatchCanvas({
   const currency = invoice?.currency ?? match.po_currency ?? "USD";
 
   return (
-    <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-800">Three-way match</h3>
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-          {match.po_number ? <span className="font-mono">PO {match.po_number}</span> : null}
-          {match.grn_number ? <span className="font-mono">GRN {match.grn_number}</span> : null}
+    <Section
+      title="Three-way match"
+      icon={ScaleIcon}
+      aside={
+        <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-muted">
+          {match.po_number ? (
+            <span className="rounded bg-surface-muted px-1.5 py-0.5 font-mono ring-1 ring-inset ring-stroke">
+              PO {match.po_number}
+            </span>
+          ) : null}
+          {match.grn_number ? (
+            <span className="rounded bg-surface-muted px-1.5 py-0.5 font-mono ring-1 ring-inset ring-stroke">
+              GRN {match.grn_number}
+            </span>
+          ) : null}
           {match.currency_mismatch ? <Badge tone="critical">Currency mismatch</Badge> : null}
         </div>
-      </div>
-
+      }
+      bodyClassName="p-0"
+    >
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+        <table className="w-full min-w-[760px] text-left text-sm">
+          <thead className="border-b border-stroke bg-surface-alt text-[11px] uppercase tracking-wide text-subtle">
             <tr>
-              <th className="px-2 py-2 font-medium">Line</th>
-              <th className="px-2 py-2 font-medium">Description</th>
-              <th className="px-2 py-2 text-right font-medium">Invoice qty × price</th>
-              <th className="px-2 py-2 text-right font-medium">PO price</th>
-              <th className="px-2 py-2 text-right font-medium">GRN recv</th>
-              <th className="px-2 py-2 text-right font-medium">Δ price</th>
-              <th className="px-2 py-2 text-right font-medium">Variance</th>
-              <th className="px-2 py-2 font-medium">Status</th>
+              <th className="px-4 py-2.5 font-semibold sm:px-5">Line</th>
+              <th className="px-3 py-2.5 font-semibold">Description</th>
+              <th className="px-3 py-2.5 text-right font-semibold">Invoice qty × price</th>
+              <th className="px-3 py-2.5 text-right font-semibold">PO price</th>
+              <th className="px-3 py-2.5 text-right font-semibold">GRN recv</th>
+              <th className="px-3 py-2.5 text-right font-semibold">Δ price</th>
+              <th className="px-3 py-2.5 text-right font-semibold">Variance</th>
+              <th className="px-4 py-2.5 font-semibold sm:px-5">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-stroke">
             {invoiceLines.map((line) => {
               const m = matchByLine.get(line.line_no);
               const status = m ? lineStatusMeta(m.status) : null;
               const pct = m ? variancePercent(m) : null;
               const flagged = m ? !m.within_tolerance || m.over_billed : false;
               return (
-                <tr key={line.line_no} className={flagged ? "bg-amber-50/60" : undefined}>
-                  <td className="px-2 py-2 tabular-nums text-slate-600">{line.line_no}</td>
-                  <td className="px-2 py-2 text-slate-700">
+                <tr key={line.line_no} className={flagged ? "bg-warning-tint/45" : undefined}>
+                  <td className="px-4 py-3 tabular-nums text-muted sm:px-5">{line.line_no}</td>
+                  <td className="px-3 py-3 text-ink-secondary">
                     {line.description}
                     {m?.resolved_sku ? (
-                      <span className="ml-1 font-mono text-xs text-slate-400">{m.resolved_sku}</span>
+                      <span className="ml-1.5 font-mono text-[11px] text-subtle">
+                        {m.resolved_sku}
+                      </span>
                     ) : null}
                   </td>
-                  <td className="px-2 py-2 text-right tabular-nums text-slate-700">
+                  <td className="px-3 py-3 text-right tabular-nums text-ink-secondary">
                     {formatQuantity(line.quantity)} × {formatMoney(line.unit_price, currency)}
                   </td>
-                  <td className="px-2 py-2 text-right tabular-nums text-slate-700">
+                  <td className="px-3 py-3 text-right tabular-nums text-ink-secondary">
                     {formatMoney(m?.po_unit_price, currency)}
                   </td>
-                  <td className="px-2 py-2 text-right tabular-nums text-slate-700">
+                  <td className="px-3 py-3 text-right tabular-nums text-ink-secondary">
                     {formatQuantity(m?.received_quantity)}
                   </td>
-                  <td className="px-2 py-2 text-right tabular-nums text-slate-700">
+                  <td
+                    className={`px-3 py-3 text-right tabular-nums ${flagged ? "font-semibold text-warning" : "text-ink-secondary"}`}
+                  >
                     {m ? formatSignedNumber(m.price_delta) : "—"}
                   </td>
-                  <td className="px-2 py-2 text-right">
+                  <td className="px-3 py-3 text-right">
                     {pct ? (
                       <Badge tone={flagged ? "warning" : "neutral"}>{pct}</Badge>
                     ) : (
-                      <span className="text-slate-400">—</span>
+                      <span className="text-subtle">—</span>
                     )}
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-4 py-3 sm:px-5">
                     {status ? (
-                      <Badge tone={status.tone}>{status.label}</Badge>
+                      <Badge tone={status.tone} dot>
+                        {status.label}
+                      </Badge>
                     ) : (
-                      <span className="text-xs text-slate-400">no match</span>
+                      <span className="text-xs text-subtle">no match</span>
                     )}
                   </td>
                 </tr>
@@ -109,13 +126,13 @@ export function ThreeWayMatchCanvas({
       </div>
 
       {match.citations.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-xs text-slate-500">Evidence:</span>
+        <div className="flex flex-wrap items-center gap-2 border-t border-stroke px-4 py-3 sm:px-5">
+          <span className="text-xs font-medium text-muted">Evidence</span>
           {match.citations.map((c, i) => (
             <CitedText key={`${c.document_id}-${i}`} citation={c} />
           ))}
         </div>
       )}
-    </section>
+    </Section>
   );
 }

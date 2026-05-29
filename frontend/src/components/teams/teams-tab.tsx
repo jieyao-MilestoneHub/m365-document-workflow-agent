@@ -1,6 +1,7 @@
 "use client";
 
 import { InboxTable } from "@/components/inbox/inbox-table";
+import { AppHeader, PageHeading } from "@/components/shell/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { useTeamsContext } from "@/hooks/useTeamsContext";
 
@@ -11,23 +12,30 @@ import { useTeamsContext } from "@/hooks/useTeamsContext";
  */
 export function TeamsTab() {
   const { mode } = useTeamsContext();
+  const tone = mode === "teams" ? "positive" : "neutral";
+  const label =
+    mode === "initializing" ? "connecting to Teams…" : mode === "teams" ? "Teams host" : "standalone";
 
   return (
-    <main className="mx-auto w-full max-w-5xl space-y-6 p-8">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">AP Three-Way Match</h1>
-          <p className="text-sm text-slate-600">Approver inbox — Microsoft Teams personal tab.</p>
-        </div>
-        <Badge tone={mode === "teams" ? "positive" : "neutral"}>
-          {mode === "initializing"
-            ? "connecting to Teams…"
-            : mode === "teams"
-              ? "Teams host"
-              : "standalone"}
-        </Badge>
-      </header>
-      <InboxTable />
-    </main>
+    <div className="flex min-h-screen flex-col">
+      <AppHeader compact />
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <PageHeading
+          eyebrow={
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
+              Microsoft Teams personal tab
+            </span>
+          }
+          title="Approver inbox"
+          description="Process an invoice to run the three-way match agent, then open the review."
+          actions={
+            <Badge tone={tone} dot>
+              {label}
+            </Badge>
+          }
+        />
+        <InboxTable />
+      </main>
+    </div>
   );
 }

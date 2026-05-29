@@ -198,10 +198,18 @@ export function blockingReasonMeta(code: string): BlockingReasonMeta {
   );
 }
 
-/** Tailwind class set per tone, shared by every badge so styling stays consistent. */
+/** Tailwind class set per tone (Fluent semantic tints), shared by every badge. */
 export const TONE_CLASSES: Record<Tone, string> = {
-  neutral: "bg-slate-100 text-slate-700 ring-slate-200",
-  positive: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  warning: "bg-amber-50 text-amber-800 ring-amber-200",
-  critical: "bg-red-50 text-red-700 ring-red-200",
+  neutral: "bg-surface-muted text-ink-secondary ring-stroke",
+  positive: "bg-success-tint text-success ring-success/25",
+  warning: "bg-warning-tint text-warning ring-warning/25",
+  critical: "bg-danger-tint text-danger ring-danger/25",
+};
+
+/** Solid dot color per tone, for status indicators. */
+export const TONE_DOT: Record<Tone, string> = {
+  neutral: "bg-subtle",
+  positive: "bg-success",
+  warning: "bg-warning",
+  critical: "bg-danger",
 };

@@ -9,6 +9,7 @@ type State =
   | { kind: "ok"; status: string; count: number }
   | { kind: "error"; message: string };
 
+/** Slim backend-connectivity indicator. */
 export function ConnectionStatus() {
   const [state, setState] = useState<State>({ kind: "loading" });
 
@@ -29,18 +30,29 @@ export function ConnectionStatus() {
     };
   }, []);
 
-  if (state.kind === "loading") return <p className="text-slate-500">Connecting to the agent API…</p>;
-  if (state.kind === "error") {
+  if (state.kind === "loading") {
     return (
-      <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-        API unreachable — start the backend with{" "}
-        <code className="font-mono">uvicorn app.api.app:create_app --factory</code>. ({state.message})
-      </p>
+      <span className="inline-flex items-center gap-2 rounded-full bg-surface-muted px-3 py-1 text-xs font-medium text-muted ring-1 ring-inset ring-stroke">
+        <span className="h-1.5 w-1.5 rounded-full bg-subtle pulse-dot" />
+        Connecting to the agent API…
+      </span>
     );
   }
+
+  if (state.kind === "error") {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-full bg-danger-tint px-3 py-1 text-xs font-medium text-danger ring-1 ring-inset ring-danger/20">
+        <span className="h-1.5 w-1.5 rounded-full bg-danger" />
+        API unreachable — start the backend{" "}
+        <code className="font-mono">uvicorn app.api.app:create_app --factory</code>
+      </span>
+    );
+  }
+
   return (
-    <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-      API {state.status} · {state.count} sample invoices available
-    </p>
+    <span className="inline-flex items-center gap-2 rounded-full bg-success-tint px-3 py-1 text-xs font-semibold text-success ring-1 ring-inset ring-success/20">
+      <span className="h-1.5 w-1.5 rounded-full bg-success" />
+      API {state.status} · {state.count} sample invoices
+    </span>
   );
 }

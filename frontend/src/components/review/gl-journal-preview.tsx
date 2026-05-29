@@ -1,4 +1,6 @@
 import { Badge } from "@/components/ui/badge";
+import { LedgerIcon } from "@/components/ui/icons";
+import { Section } from "@/components/ui/section";
 import { formatMoney } from "@/lib/format";
 import type { PostingDraft } from "@/lib/types";
 
@@ -14,10 +16,9 @@ function sum(values: string[]): number {
 export function GLJournalPreview({ posting }: { posting: PostingDraft | null }) {
   if (!posting) {
     return (
-      <section className="rounded-lg border border-slate-200 bg-white p-5">
-        <h3 className="text-sm font-semibold text-slate-800">GL journal preview</h3>
-        <p className="mt-2 text-sm text-slate-500">No posting draft available.</p>
-      </section>
+      <Section title="GL journal preview" icon={LedgerIcon}>
+        <p className="text-sm text-muted">No posting draft available.</p>
+      </Section>
     );
   }
 
@@ -28,59 +29,63 @@ export function GLJournalPreview({ posting }: { posting: PostingDraft | null }) 
   );
 
   return (
-    <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-5">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-800">GL journal preview</h3>
-        <Badge tone={posting.balanced ? "positive" : "critical"}>
+    <Section
+      title="GL journal preview"
+      icon={LedgerIcon}
+      aside={
+        <Badge tone={posting.balanced ? "positive" : "critical"} dot>
           {posting.balanced ? "Balanced" : "Unbalanced"}
         </Badge>
-      </div>
-
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
-          <tr>
-            <th className="px-2 py-2 font-medium">Account</th>
-            <th className="px-2 py-2 font-medium">Memo</th>
-            <th className="px-2 py-2 text-right font-medium">Debit</th>
-            <th className="px-2 py-2 text-right font-medium">Credit</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {posting.lines.map((line, i) => (
-            <tr key={`${line.gl_account}-${i}`}>
-              <td className="px-2 py-2 font-mono text-slate-700">{line.gl_account}</td>
-              <td className="px-2 py-2 text-slate-600">{line.memo ?? "—"}</td>
-              <td className="px-2 py-2 text-right tabular-nums text-slate-700">
-                {line.direction === "debit" ? formatMoney(line.amount, currency) : ""}
+      }
+      bodyClassName="p-0"
+    >
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] text-left text-sm">
+          <thead className="border-b border-stroke bg-surface-alt text-[11px] uppercase tracking-wide text-subtle">
+            <tr>
+              <th className="px-4 py-2.5 font-semibold sm:px-5">Account</th>
+              <th className="px-3 py-2.5 font-semibold">Memo</th>
+              <th className="px-3 py-2.5 text-right font-semibold">Debit</th>
+              <th className="px-4 py-2.5 text-right font-semibold sm:px-5">Credit</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-stroke">
+            {posting.lines.map((line, i) => (
+              <tr key={`${line.gl_account}-${i}`}>
+                <td className="px-4 py-3 font-mono text-ink sm:px-5">{line.gl_account}</td>
+                <td className="px-3 py-3 text-ink-secondary">{line.memo ?? "—"}</td>
+                <td className="px-3 py-3 text-right tabular-nums text-ink-secondary">
+                  {line.direction === "debit" ? formatMoney(line.amount, currency) : ""}
+                </td>
+                <td className="px-4 py-3 text-right tabular-nums text-ink-secondary sm:px-5">
+                  {line.direction === "credit" ? formatMoney(line.amount, currency) : ""}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="border-t-2 border-stroke-strong bg-surface-alt text-sm font-semibold text-ink">
+            <tr>
+              <td className="px-4 py-3 sm:px-5" colSpan={2}>
+                Totals
               </td>
-              <td className="px-2 py-2 text-right tabular-nums text-slate-700">
-                {line.direction === "credit" ? formatMoney(line.amount, currency) : ""}
+              <td className="px-3 py-3 text-right tabular-nums">
+                {formatMoney(String(debitTotal), currency)}
+              </td>
+              <td className="px-4 py-3 text-right tabular-nums sm:px-5">
+                {formatMoney(String(creditTotal), currency)}
               </td>
             </tr>
-          ))}
-        </tbody>
-        <tfoot className="border-t border-slate-200 text-sm font-medium">
-          <tr>
-            <td className="px-2 py-2" colSpan={2}>
-              Totals
-            </td>
-            <td className="px-2 py-2 text-right tabular-nums">
-              {formatMoney(String(debitTotal), currency)}
-            </td>
-            <td className="px-2 py-2 text-right tabular-nums">
-              {formatMoney(String(creditTotal), currency)}
-            </td>
-          </tr>
-        </tfoot>
-      </table>
+          </tfoot>
+        </table>
+      </div>
 
       {posting.notes.length > 0 && (
-        <ul className="list-disc space-y-1 pl-5 text-xs text-slate-500">
+        <ul className="list-disc space-y-1 border-t border-stroke px-8 py-3 text-xs text-muted">
           {posting.notes.map((note, i) => (
             <li key={i}>{note}</li>
           ))}
         </ul>
       )}
-    </section>
+    </Section>
   );
 }
