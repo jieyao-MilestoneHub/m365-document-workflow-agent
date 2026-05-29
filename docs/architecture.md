@@ -21,8 +21,8 @@ flowchart TB
     end
 
     subgraph API["FastAPI service (built)"]
-        rest["REST: /scenarios /jobs /decision"]
-        sse["SSE: /jobs/{id}/stream<br/>(reasoning trace)"]
+        rest["REST: /api/scenarios · /api/jobs<br/>/api/jobs/{id}/decision · /api/health"]
+        sse["SSE: /api/jobs/{id}/stream<br/>(reasoning trace)"]
     end
 
     subgraph Core["Orchestrator core (built — offline, 86 tests)"]

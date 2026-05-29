@@ -130,7 +130,8 @@ public, non-sensitive config ships to the browser.
 ## The demo / scenario arc
 
 The catalog is curated to *prove* behaviour on the exceptions that matter (full table in
-[`sample-data/README.md`](sample-data/README.md)). The headline arc:
+[`sample-data/README.md`](sample-data/README.md); shooting script in
+[`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md)). The headline arc:
 
 | Step | Invoice | What it shows | Outcome |
 |------|---------|---------------|---------|
