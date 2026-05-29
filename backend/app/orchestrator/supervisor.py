@@ -13,11 +13,11 @@ from dataclasses import dataclass
 from app.schemas.enums import BlockingReason, Decision, Severity
 from app.schemas.outcome import ExceptionTicket, ValidationOutcome
 
-from .actions import Delegate, Escalate, Finalize, PeerReview
+from .actions import Delegate, Escalate, Finalize, PeerReview, RequestInput
 from .brain import SupervisorBrain
 from .envelope import HandoffRecord, MultiAgentEnvelope, PeerReviewResponse
 from .guardrails import GuardrailCeiling, preflight
-from .ports import Clock, IdGen, ReasoningPort
+from .ports import Clock, HumanInputPort, IdGen, ReasoningPort
 from .roles import EXCEPTION_REVIEWER, INVOICE_EXTRACTOR, SUPERVISOR
 from .specialists.base import Specialist
 
@@ -48,6 +48,7 @@ class Supervisor:
         idgen: IdGen,
         ceiling: GuardrailCeiling | None = None,
         reasoning: ReasoningPort | None = None,
+        human: HumanInputPort | None = None,
         on_event: Callable[[TraceEvent], None] | None = None,
         max_iterations: int = 50,
     ) -> None:
@@ -57,6 +58,7 @@ class Supervisor:
         self._idgen = idgen
         self._ceiling = ceiling or GuardrailCeiling()
         self._reasoning = reasoning
+        self._human = human
         self._on_event = on_event
         self._max_iterations = max_iterations
 
@@ -87,6 +89,26 @@ class Supervisor:
                 envelope = self._handoff(envelope, SUPERVISOR, action.reason_code, action.summary, 0)
                 emit("escalate", SUPERVISOR, action.summary)
                 return SupervisorRun(envelope, outcome, tuple(events))
+
+            if isinstance(action, RequestInput):
+                answer = (
+                    self._human.answer(
+                        field=action.field, prompt=action.prompt, candidates=list(action.candidates)
+                    )
+                    if self._human is not None
+                    else None
+                )
+                if answer is not None:
+                    envelope = envelope.with_field_correction(
+                        INVOICE_EXTRACTOR, action.field, answer
+                    )
+                    detail = f"{action.field} = {answer}"
+                else:
+                    envelope = envelope.with_requested_input(action.field)
+                    detail = f"{action.field} unanswered"
+                envelope = self._handoff(envelope, INVOICE_EXTRACTOR, "REQUEST_INPUT", detail, 0)
+                emit("request_input", INVOICE_EXTRACTOR, detail)
+                continue
 
             if isinstance(action, PeerReview):
                 text = self._peer_review_text(action.subject_role)

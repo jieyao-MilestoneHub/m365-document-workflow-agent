@@ -11,10 +11,11 @@ from typing import Protocol
 
 from app.schemas.enums import Severity
 
-from .actions import Delegate, Escalate, Finalize, PeerReview, SupervisorAction
+from .actions import Delegate, Escalate, Finalize, PeerReview, RequestInput, SupervisorAction
 from .envelope import MultiAgentEnvelope
 from .roles import (
     EXCEPTION_REVIEWER,
+    INVOICE_EXTRACTOR,
     PIPELINE_ORDER,
     PO_GRN_MATCHER,
     POSTING_PREPARER,
@@ -22,6 +23,9 @@ from .roles import (
 )
 
 MAX_ATTEMPTS = 2  # initial try + one self-correction retry
+
+#: invoice fields a human can fill in to unblock a run (vs a hard quality failure)
+SLOT_FILLABLE = frozenset({"po_ref", "grn_ref"})
 
 
 class SupervisorBrain(Protocol):
@@ -36,6 +40,10 @@ class ScriptedSupervisor:
             result = envelope.result_for(role)
 
             if result is None:
+                if role is PO_GRN_MATCHER:
+                    ask = self._slot_fill(envelope)
+                    if ask is not None:
+                        return ask
                 if role is POSTING_PREPARER and self._needs_peer_review(envelope):
                     return PeerReview(
                         reviewer=PO_GRN_MATCHER, subject_role=VARIANCE_ASSESSOR,
@@ -49,6 +57,23 @@ class ScriptedSupervisor:
                 return Escalate(reason_code="SPECIALIST_FAILED", summary=f"{role}: {result.error}")
 
         return Finalize()
+
+    @staticmethod
+    def _slot_fill(envelope: MultiAgentEnvelope) -> RequestInput | None:
+        """Ask the human for the first slot-fillable missing field not yet requested."""
+        invoice = envelope.payload_for(INVOICE_EXTRACTOR)
+        if invoice is None:
+            return None
+        pending = [
+            f for f in invoice.missing_fields
+            if f in SLOT_FILLABLE and f not in envelope.requested_inputs
+        ]
+        if not pending:
+            return None
+        return RequestInput(
+            field=pending[0],
+            prompt=f"The invoice is missing '{pending[0]}'. Which value applies?",
+        )
 
     @staticmethod
     def _needs_peer_review(envelope: MultiAgentEnvelope) -> bool:

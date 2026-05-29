@@ -27,6 +27,15 @@ class PeerReview:
 
 
 @dataclass(frozen=True)
+class RequestInput:
+    """Pause and ask a human to supply a missing/ambiguous field (slot fill)."""
+
+    field: str
+    prompt: str
+    candidates: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class Escalate:
     """Abandon automation and route to a human."""
 
@@ -39,4 +48,4 @@ class Finalize:
     """Terminate the run; the outcome is computed by the authoritative decision matrix."""
 
 
-SupervisorAction = Union[Delegate, PeerReview, Escalate, Finalize]
+SupervisorAction = Union[Delegate, PeerReview, RequestInput, Escalate, Finalize]

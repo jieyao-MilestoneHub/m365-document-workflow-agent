@@ -98,6 +98,29 @@ class FixtureLedger:
         )
 
 
+class ScriptedHumanInput:
+    """HumanInputPort backed by an in-memory ``{field: answer}`` map (tests)."""
+
+    def __init__(self, answers: dict[str, str] | None = None) -> None:
+        self._answers = answers or {}
+
+    def answer(self, *, field: str, prompt: str, candidates: list[str]) -> str | None:
+        return self._answers.get(field)
+
+
+class FixtureHumanInput:
+    """HumanInputPort backed by ``<base>/human_answers.json`` ({field: answer}); None if absent."""
+
+    def __init__(self, base_dir: str | Path) -> None:
+        self._base = Path(base_dir)
+
+    def answer(self, *, field: str, prompt: str, candidates: list[str]) -> str | None:
+        path = self._base / "human_answers.json"
+        if not path.exists():
+            return None
+        return json.loads(path.read_text(encoding="utf-8")).get(field)
+
+
 class FixedClock:
     """Deterministic clock for reproducible traces/tests."""
 

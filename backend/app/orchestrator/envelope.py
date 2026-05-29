@@ -60,6 +60,7 @@ class MultiAgentEnvelope:
     handoff_history: tuple[HandoffRecord, ...] = ()
     results: dict[str, SpecialistResult] = field(default_factory=dict)
     peer_reviews: tuple[PeerReviewResponse, ...] = ()
+    requested_inputs: tuple[str, ...] = ()
     tool_calls_used: int = 0
     role_visits: dict[str, int] = field(default_factory=dict)
 
@@ -95,3 +96,27 @@ class MultiAgentEnvelope:
 
     def with_peer_review(self, response: PeerReviewResponse) -> "MultiAgentEnvelope":
         return replace(self, peer_reviews=self.peer_reviews + (response,))
+
+    def with_requested_input(self, field: str) -> "MultiAgentEnvelope":
+        """Record that a field was asked about (so it isn't asked again)."""
+        return replace(self, requested_inputs=self.requested_inputs + (field,))
+
+    def with_field_correction(self, role: str, field: str, value) -> "MultiAgentEnvelope":
+        """Apply a human-supplied value to a specialist payload and re-open downstream work.
+
+        Replaces the payload (e.g. the invoice) with a corrected copy and drops all other
+        specialist results so they re-run against the corrected data.
+        """
+        res = self.results.get(role)
+        if res is None or res.payload is None:
+            return self.with_requested_input(field)
+        payload = res.payload
+        remaining = [f for f in getattr(payload, "missing_fields", []) if f != field]
+        corrected = payload.model_copy(update={field: value, "missing_fields": remaining})
+        new_result = SpecialistResult(
+            role=role, payload=corrected, summary=f"{field} corrected to {value}"
+        )
+        return replace(
+            self, results={role: new_result},
+            requested_inputs=self.requested_inputs + (field,),
+        )

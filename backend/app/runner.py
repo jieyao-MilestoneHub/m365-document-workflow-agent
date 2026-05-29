@@ -11,6 +11,7 @@ from pathlib import Path
 from app.adapters.fixtures import (
     FixedClock,
     FixtureExtractor,
+    FixtureHumanInput,
     FixtureKnowledge,
     FixtureLedger,
     ScriptedReasoner,
@@ -69,6 +70,7 @@ def run(
         clock=FixedClock(),
         idgen=SeqIdGen(),
         reasoning=ScriptedReasoner(),
+        human=FixtureHumanInput(base_dir),
         on_event=on_event,
         ceiling=ceiling,
     )

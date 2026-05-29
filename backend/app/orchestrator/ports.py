@@ -60,6 +60,16 @@ class ReasoningPort(Protocol):
 
 
 @runtime_checkable
+class HumanInputPort(Protocol):
+    """Ask a human to supply a missing field (Copilot adaptive card in prod; scripted offline).
+
+    Returns the answer, or None if it cannot be resolved (the run then holds for review).
+    """
+
+    def answer(self, *, field: str, prompt: str, candidates: list[str]) -> str | None: ...
+
+
+@runtime_checkable
 class Clock(Protocol):
     """Injected time source (keeps logic deterministic and testable)."""
 
