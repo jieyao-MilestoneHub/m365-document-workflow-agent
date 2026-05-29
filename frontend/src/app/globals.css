@@ -1,12 +1,150 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+/* ───────────────────────────────────────────────────────────────────────────
+   Fluent 2 / Microsoft 365 design tokens.
+   A mature enterprise palette: Fluent neutral canvas, Microsoft brand blue,
+   Segoe UI Variable type, Fluent depth shadows. Tokens feed Tailwind v4
+   utilities (bg-brand, text-ink, shadow-card, font-display, …).
+   ─────────────────────────────────────────────────────────────────────────── */
+@theme {
+  --font-sans:
+    "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont,
+    system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font-display:
+    "Segoe UI Variable Display", "Segoe UI Semibold", "Segoe UI", system-ui,
+    sans-serif;
+
+  /* surfaces */
+  --color-canvas: #f3f2f1;
+  --color-canvas-top: #faf9f8;
+  --color-surface: #ffffff;
+  --color-surface-alt: #faf9f8;
+  --color-surface-muted: #f5f4f3;
+  --color-stroke: #e1dfdd;
+  --color-stroke-strong: #d2d0ce;
+
+  /* text */
+  --color-ink: #242424;
+  --color-ink-secondary: #424242;
+  --color-muted: #616161;
+  --color-subtle: #8a8886;
+
+  /* Microsoft brand blue ramp */
+  --color-brand: #0f6cbd;
+  --color-brand-hover: #115ea3;
+  --color-brand-pressed: #0c5a9e;
+  --color-brand-ink: #0c4a82;
+  --color-brand-tint: #ebf3fc;
+  --color-brand-tint-strong: #cfe4fa;
+
+  /* semantic (Fluent) */
+  --color-success: #0e700e;
+  --color-success-tint: #dff6dd;
+  --color-warning: #7a5300;
+  --color-warning-tint: #fff4ce;
+  --color-danger: #a4262c;
+  --color-danger-tint: #fde7e9;
+
+  /* elevation (Fluent depth) */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.07), 0 0 1px rgba(0, 0, 0, 0.1);
+  --shadow-raised: 0 4px 8px rgba(0, 0, 0, 0.1), 0 0 2px rgba(0, 0, 0, 0.08);
+  --shadow-flyout: 0 8px 20px rgba(0, 0, 0, 0.16), 0 0 2px rgba(0, 0, 0, 0.12);
+
+  --radius-card: 8px;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* a calm M365 atmosphere: soft top wash + faint brand glow, otherwise flat */
+    background-image:
+      radial-gradient(120% 60% at 50% -10%, rgba(15, 108, 189, 0.06), transparent 60%),
+      linear-gradient(180deg, var(--color-canvas-top), var(--color-canvas) 220px);
+    background-attachment: fixed;
+  }
+
+  /* Fluent-style keyboard focus: white halo + brand stroke */
+  :focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--color-surface),
+      0 0 0 4px var(--color-brand);
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: var(--color-brand-tint-strong);
+    color: var(--color-brand-ink);
+  }
+
+  /* thin neutral scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #c8c6c4 transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: #c8c6c4;
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 8px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: #a19f9d;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+}
+
+@layer utilities {
+  /* Staggered page-load reveal. Apply .rise and set --d for delay. */
+  .rise {
+    animation: rise 0.5s cubic-bezier(0.1, 0.9, 0.2, 1) both;
+    animation-delay: var(--d, 0ms);
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Live-status pulse (reasoning stream dot). */
+  .pulse-dot {
+    animation: pulse-dot 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%,
+    100% {
+      opacity: 1;
+      box-shadow: 0 0 0 0 rgba(15, 108, 189, 0.35);
+    }
+    50% {
+      opacity: 0.7;
+      box-shadow: 0 0 0 4px rgba(15, 108, 189, 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rise,
+    .pulse-dot {
+      animation: none;
+    }
+  }
 }
