@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 840" font-family="Segoe UI, system-ui, -apple-system, sans-serif" role="img" aria-label="AP Invoice Three-Way Match architecture diagram">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5f6368"/>
+    </marker>
+    <marker id="arrowG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b06000"/>
+    </marker>
+    <style>
+      text { fill:#202124; }
+      .title { font-size:20px; font-weight:700; }
+      .lbl { font-size:13px; font-weight:700; }
+      .box { font-size:12px; }
+      .sm  { font-size:11px; }
+      .xs  { font-size:10px; }
+      .built  { fill:#e8f0fe; stroke:#1a73e8; stroke-width:1.5; }
+      .green  { fill:#e6f4ea; stroke:#137333; stroke-width:1.5; }
+      .gated  { fill:#fef7e0; stroke:#b06000; stroke-width:1.5; stroke-dasharray:6 4; }
+      .guard  { fill:#fce8e6; stroke:#c5221f; stroke-width:1.5; }
+      .ports  { fill:#f1f3f4; stroke:#5f6368; stroke-width:1.5; }
+      .inner  { fill:#ffffff; stroke:#1a73e8; stroke-width:1.2; }
+      .spec   { fill:#ffffff; stroke:#137333; stroke-width:1.2; }
+      .edge   { stroke:#5f6368; stroke-width:1.6; fill:none; }
+      .edgeG  { stroke:#b06000; stroke-width:1.6; fill:none; stroke-dasharray:6 4; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="979" height="839" rx="14" fill="#ffffff" stroke="#dadce0"/>
+  <text x="490" y="38" text-anchor="middle" class="title">AP Invoice Three-Way Match — Architecture</text>
+
+  <!-- ============ Band 1: clients ============ -->
+  <rect class="gated" x="30" y="64" width="445" height="104" rx="10"/>
+  <text x="252" y="84" text-anchor="middle" class="lbl" fill="#b06000">M365 surface — gated</text>
+  <rect class="inner" x="48" y="98" width="185" height="52" rx="7" fill="#fffdf5" stroke="#b06000"/>
+  <text x="140" y="128" text-anchor="middle" class="box">M365 Copilot / Teams</text>
+  <rect class="inner" x="270" y="98" width="185" height="52" rx="7" fill="#fffdf5" stroke="#b06000"/>
+  <text x="362" y="121" text-anchor="middle" class="sm">Agents-SDK proxy</text>
+  <text x="362" y="138" text-anchor="middle" class="xs">custom-engine · Adaptive Cards</text>
+  <path class="edgeG" d="M233,124 L266,124" marker-end="url(#arrowG)"/>
+
+  <rect class="built" x="505" y="64" width="445" height="104" rx="10"/>
+  <text x="727" y="84" text-anchor="middle" class="lbl" fill="#1a73e8">Next.js console — built</text>
+  <rect class="inner" x="525" y="98" width="405" height="52" rx="7"/>
+  <text x="727" y="120" text-anchor="middle" class="box">Approver console</text>
+  <text x="727" y="138" text-anchor="middle" class="sm">zod-validated client · CSP + security headers · Teams-tab ready</text>
+
+  <path class="edgeG" d="M362,150 L362,196" marker-end="url(#arrowG)"/>
+  <text x="370" y="178" class="xs" fill="#b06000">gated</text>
+  <path class="edge" d="M727,150 L727,196" marker-end="url(#arrow)"/>
+  <text x="735" y="178" class="xs">REST + SSE</text>
+
+  <!-- ============ Band 2: FastAPI ============ -->
+  <rect class="built" x="30" y="200" width="920" height="86" rx="10"/>
+  <text x="46" y="220" class="lbl" fill="#1a73e8">FastAPI service — built</text>
+  <rect class="inner" x="60" y="232" width="420" height="42" rx="7"/>
+  <text x="270" y="250" text-anchor="middle" class="sm">REST · /api/scenarios · /api/jobs</text>
+  <text x="270" y="266" text-anchor="middle" class="sm">/api/jobs/{id}/decision · /api/health</text>
+  <rect class="inner" x="500" y="232" width="420" height="42" rx="7"/>
+  <text x="710" y="250" text-anchor="middle" class="sm">SSE · /api/jobs/{id}/stream</text>
+  <text x="710" y="266" text-anchor="middle" class="xs">one trace event per step → completed</text>
+
+  <path class="edge" d="M490,286 L490,314" marker-end="url(#arrow)"/>
+
+  <!-- ============ Band 3: orchestrator core ============ -->
+  <rect class="green" x="30" y="318" width="920" height="210" rx="10"/>
+  <text x="46" y="338" class="lbl" fill="#137333">Orchestrator core — built · offline · 86 tests</text>
+
+  <rect class="inner" x="60" y="350" width="510" height="74" rx="7" stroke="#137333"/>
+  <text x="315" y="372" text-anchor="middle" class="box" font-weight="700">Magentic-style supervisor</text>
+  <text x="315" y="390" text-anchor="middle" class="sm">one action per turn:</text>
+  <text x="315" y="408" text-anchor="middle" class="sm">delegate · peer-review · request-input · escalate · finalize</text>
+
+  <rect class="guard" x="600" y="350" width="320" height="74" rx="7"/>
+  <text x="760" y="370" text-anchor="middle" class="sm" font-weight="700" fill="#c5221f">Deterministic guardrails — authoritative</text>
+  <text x="760" y="388" text-anchor="middle" class="xs">budget 25 · visit cap 3 · cycle detection</text>
+  <text x="760" y="404" text-anchor="middle" class="xs">pass / hold / escalate matrix (pure code)</text>
+
+  <path class="edge" d="M570,387 L600,387" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+
+  <text x="60" y="450" class="sm" fill="#137333" font-weight="700">5 specialists</text>
+  <path class="edge" d="M315,424 L315,454" marker-end="url(#arrow)"/>
+
+  <rect class="spec" x="170" y="456" width="146" height="44" rx="7"/>
+  <text x="243" y="482" text-anchor="middle" class="xs">invoice_extractor</text>
+  <rect class="spec" x="332" y="456" width="146" height="44" rx="7"/>
+  <text x="405" y="482" text-anchor="middle" class="xs">po_grn_matcher</text>
+  <rect class="spec" x="494" y="456" width="146" height="44" rx="7"/>
+  <text x="567" y="482" text-anchor="middle" class="xs">variance_assessor</text>
+  <rect class="spec" x="656" y="456" width="146" height="44" rx="7"/>
+  <text x="729" y="482" text-anchor="middle" class="xs">posting_preparer</text>
+  <rect class="spec" x="818" y="456" width="102" height="44" rx="7"/>
+  <text x="869" y="476" text-anchor="middle" class="xs">exception_</text>
+  <text x="869" y="490" text-anchor="middle" class="xs">reviewer</text>
+
+  <path class="edge" d="M316,478 L330,478" marker-end="url(#arrow)"/>
+  <path class="edge" d="M478,478 L492,478" marker-end="url(#arrow)"/>
+  <path class="edge" d="M640,478 L654,478" marker-end="url(#arrow)"/>
+  <path class="edge" d="M802,478 L816,478" marker-end="url(#arrow)"/>
+
+  <path class="edge" d="M490,528 L490,556" marker-end="url(#arrow)"/>
+
+  <!-- ============ Band 4: ports ============ -->
+  <rect class="ports" x="30" y="560" width="920" height="72" rx="10"/>
+  <text x="46" y="580" class="lbl" fill="#5f6368">Ports — Dependency Inversion</text>
+  <rect class="inner" x="48" y="592" width="168" height="30" rx="6" stroke="#5f6368"/>
+  <text x="132" y="611" text-anchor="middle" class="sm">ExtractorPort</text>
+  <rect class="inner" x="232" y="592" width="168" height="30" rx="6" stroke="#5f6368"/>
+  <text x="316" y="611" text-anchor="middle" class="sm">KnowledgePort</text>
+  <rect class="inner" x="416" y="592" width="148" height="30" rx="6" stroke="#5f6368"/>
+  <text x="490" y="611" text-anchor="middle" class="sm">LedgerPort</text>
+  <rect class="inner" x="580" y="592" width="168" height="30" rx="6" stroke="#5f6368"/>
+  <text x="664" y="611" text-anchor="middle" class="sm">ReasoningPort</text>
+  <rect class="inner" x="764" y="592" width="168" height="30" rx="6" stroke="#5f6368"/>
+  <text x="848" y="611" text-anchor="middle" class="sm">HumanInputPort</text>
+
+  <path class="edge" d="M252,632 L252,660" marker-end="url(#arrow)"/>
+  <path class="edgeG" d="M727,632 L727,660" marker-end="url(#arrowG)"/>
+
+  <!-- ============ Band 5: adapters ============ -->
+  <rect class="built" x="30" y="664" width="445" height="120" rx="10"/>
+  <text x="252" y="686" text-anchor="middle" class="lbl" fill="#1a73e8">Fixture adapters — built (synthetic JSON)</text>
+  <text x="252" y="712" text-anchor="middle" class="sm">FixtureExtractor · FixtureKnowledge · FixtureLedger</text>
+  <text x="252" y="732" text-anchor="middle" class="sm">ScriptedReasoner · Fixture/Scripted HumanInput</text>
+  <text x="252" y="752" text-anchor="middle" class="sm">FixedClock · SeqIdGen</text>
+  <text x="252" y="772" text-anchor="middle" class="xs" fill="#5f6368">runs the full pipeline offline, no cloud</text>
+
+  <rect class="gated" x="505" y="664" width="445" height="120" rx="10"/>
+  <text x="727" y="686" text-anchor="middle" class="lbl" fill="#b06000">Azure adapters — gated</text>
+  <text x="727" y="712" text-anchor="middle" class="sm">Document Intelligence — prebuilt-invoice</text>
+  <text x="727" y="732" text-anchor="middle" class="sm">Foundry IQ — grounded retrieval + citations</text>
+  <text x="727" y="752" text-anchor="middle" class="sm">Azure OpenAI — advisory narration only</text>
+  <text x="727" y="772" text-anchor="middle" class="xs" fill="#b06000">same contracts → no orchestrator change</text>
+
+  <!-- ============ Legend ============ -->
+  <rect class="built" x="30" y="802" width="16" height="16" rx="3"/>
+  <text x="52" y="815" class="sm">built (offline, tested)</text>
+  <rect class="gated" x="205" y="802" width="16" height="16" rx="3"/>
+  <text x="227" y="815" class="sm">gated on Azure / M365 provisioning</text>
+  <rect class="guard" x="470" y="802" width="16" height="16" rx="3"/>
+  <text x="492" y="815" class="sm">authoritative controls (LLM cannot override)</text>
+</svg>

@@ -73,7 +73,7 @@ Goal: submission-ready quality + safety.
 
 ### P6 — Demo & Submission ⬜
 Goal: ship it.
-- WS7: record ≤5-min demo video (the hard-point arc), submit public repo + README + diagram + video by **June 14, 2026**.
+- WS7: record ≤5-min demo video (the hard-point arc), submit public repo + README + diagram + video by **June 14, 2026**. Checklist: [`SUBMISSION.md`](SUBMISSION.md).
 - **Exit:** submitted; digital badge.
 
 ---
