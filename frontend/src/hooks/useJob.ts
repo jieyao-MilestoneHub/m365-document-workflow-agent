@@ -10,11 +10,17 @@ import type { AsyncState } from "./useScenarios";
 /** Loads a single job by id and exposes a `decide` action that refreshes the local copy. */
 export function useJob(jobId: string | undefined) {
   const [state, setState] = useState<AsyncState<JobDetail>>({ status: "loading" });
+  const [trackedId, setTrackedId] = useState(jobId);
+
+  // Reset to loading during render when the job changes (avoids setState-in-effect).
+  if (trackedId !== jobId) {
+    setTrackedId(jobId);
+    setState({ status: "loading" });
+  }
 
   useEffect(() => {
     if (!jobId) return;
     let active = true;
-    setState({ status: "loading" });
     (async () => {
       try {
         const data = await api.getJob(jobId);

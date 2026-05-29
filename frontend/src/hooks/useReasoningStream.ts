@@ -14,41 +14,51 @@ export interface ReasoningStream {
   error: string | null;
 }
 
+interface InternalState extends ReasoningStream {
+  jobId: string | undefined;
+}
+
+const fresh = (jobId: string | undefined): InternalState => ({
+  jobId,
+  events: [],
+  completed: null,
+  status: "streaming",
+  error: null,
+});
+
 /**
  * Subscribes to a job's reasoning-trace SSE stream and accumulates trace events until the
  * terminal `completed` event. Delegates all EventSource handling to the api boundary.
+ *
+ * State is reset during render when `jobId` changes (the React-recommended pattern) rather
+ * than in the effect, so switching jobs never shows the previous job's events.
  */
 export function useReasoningStream(jobId: string | undefined): ReasoningStream {
-  const [events, setEvents] = useState<TraceEvent[]>([]);
-  const [completed, setCompleted] = useState<StreamCompleted | null>(null);
-  const [status, setStatus] = useState<StreamStatus>("streaming");
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<InternalState>(() => fresh(jobId));
+
+  if (state.jobId !== jobId) {
+    setState(fresh(jobId));
+  }
 
   useEffect(() => {
     if (!jobId) return;
-    setEvents([]);
-    setCompleted(null);
-    setStatus("streaming");
-    setError(null);
+    // Guard updates to the job this effect was opened for (ignore late events after a switch).
+    const apply = (fn: (s: InternalState) => InternalState) =>
+      setState((s) => (s.jobId === jobId ? fn(s) : s));
 
     const dispose = api.openStream(jobId, {
       onTrace: (event) =>
-        setEvents((prev) =>
-          prev.some((e) => e.seq === event.seq)
-            ? prev
-            : [...prev, event].sort((a, b) => a.seq - b.seq),
-        ),
-      onCompleted: (event) => {
-        setCompleted(event);
-        setStatus("completed");
-      },
-      onError: (err) => {
-        setError(err.message);
-        setStatus("error");
-      },
+        apply((s) => ({
+          ...s,
+          events: s.events.some((e) => e.seq === event.seq)
+            ? s.events
+            : [...s.events, event].sort((a, b) => a.seq - b.seq),
+        })),
+      onCompleted: (event) => apply((s) => ({ ...s, completed: event, status: "completed" })),
+      onError: (err) => apply((s) => ({ ...s, error: err.message, status: "error" })),
     });
     return dispose;
   }, [jobId]);
 
-  return { events, completed, status, error };
+  return state;
 }
