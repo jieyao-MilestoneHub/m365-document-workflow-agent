@@ -50,6 +50,24 @@ HTTPS URL, so it is **built and documented here, not sideloaded**. To sideload l
 Teams app manifest with a personal tab `contentUrl` pointing at `<host>/teams`, zip it with the
 icons, and upload via *Teams → Apps → Manage your apps → Upload a custom app*.
 
+## Console vs Teams/Copilot — division of labor
+
+Both surfaces drive the **same** agent/orchestrator through the ports & adapters seam, so neither
+duplicates business logic — they differ only in what they're good at:
+
+- **Teams / M365 Copilot — the conversational surface** (and the hard "M365 Copilot integration"
+  submission gate). Best for *triggering* the agent ("run the three-way match for INV-1042"),
+  *answering* questions with a short summary + a citation, and *notifying* ("INV-1042 is on hold —
+  needs your review").
+- **This console — the review workbench**, for the dense, tabular, side-by-side actions a chat
+  bubble handles poorly: the **approver inbox** (triage exceptions), the **three-way canvas + GL
+  preview** (line-by-line Invoice ↔ PO ↔ GRN diff and Σdebit == Σcredit checked to the cent), and
+  the **live SSE reasoning trace** with clickable Foundry IQ citations.
+
+In short: Teams/Copilot is the *entry point + notifications + Q&A*; the console is where the
+human actually makes the approval decision. See `docs/ROADMAP.md` for how this maps to WS3
+(this console) vs WS4 (the Copilot/Teams proxy).
+
 ## Commands
 
 ```bash
