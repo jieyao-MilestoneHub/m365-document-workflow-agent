@@ -7,13 +7,26 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
+from app.runner import DEFAULT_DATA_DIR
 from app.schemas.enums import Decision, PostingDirection
 from app.schemas.invoice import InvoiceLineItem, VendorInvoice
 from app.schemas.policy import PolicyBundle, VendorConfig
 from app.schemas.posting import PostingDraft, PostingLine
+
+
+@pytest.fixture(scope="session")
+def sample_data_dir() -> Path:
+    """The synthetic-data directory, resolved by the runner (folder-move resilient).
+
+    Tests requiring on-disk fixtures depend on this single source of truth rather than
+    reconstructing paths, so reorganizing folders only requires changing the resolver.
+    """
+    assert DEFAULT_DATA_DIR.is_dir(), f"sample-data not found at {DEFAULT_DATA_DIR}"
+    return DEFAULT_DATA_DIR
 
 
 def _line(line_no: int, qty: str, unit: str) -> InvoiceLineItem:

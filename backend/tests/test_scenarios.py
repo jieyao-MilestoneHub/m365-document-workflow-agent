@@ -30,6 +30,10 @@ SCENARIOS = [
 ]
 
 
+#: just the clean scenarios, flattened out of SCENARIOS so each is its own test case
+PASS_SCENARIOS = [inv for inv, decision, _ in SCENARIOS if decision is PASS]
+
+
 @pytest.mark.parametrize("invoice_id, decision, reason", SCENARIOS)
 def test_scenario(invoice_id, decision, reason):
     outcome = run(invoice_id).outcome
@@ -38,7 +42,7 @@ def test_scenario(invoice_id, decision, reason):
         assert reason in outcome.blocking_reasons
 
 
-def test_pass_scenarios_have_no_blocking_reasons():
-    for invoice_id, decision, _ in SCENARIOS:
-        if decision is PASS:
-            assert run(invoice_id).outcome.blocking_reasons == []
+@pytest.mark.parametrize("invoice_id", PASS_SCENARIOS)
+def test_pass_scenario_has_no_blocking_reasons(invoice_id):
+    # a clean invoice must carry an empty ledger — not merely a PASS verdict
+    assert run(invoice_id).outcome.blocking_reasons == []

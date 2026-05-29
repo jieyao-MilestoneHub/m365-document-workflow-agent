@@ -4,7 +4,7 @@ from __future__ import annotations
 from app.orchestrator.envelope import SpecialistResult
 from app.orchestrator.guardrails import GuardrailCeiling
 from app.orchestrator.roles import INVOICE_EXTRACTOR, PO_GRN_MATCHER
-from app.runner import DEFAULT_DATA_DIR, default_registry, run
+from app.runner import default_registry, run
 from app.schemas.enums import BlockingReason, Decision
 
 
@@ -53,8 +53,8 @@ class _FailingExtractor:
         return SpecialistResult(role=self.role, error="boom")
 
 
-def test_failed_specialist_is_retried_then_escalated():
-    registry, knowledge = default_registry(DEFAULT_DATA_DIR)
+def test_failed_specialist_is_retried_then_escalated(sample_data_dir):
+    registry, knowledge = default_registry(sample_data_dir)
     registry[INVOICE_EXTRACTOR] = _FailingExtractor()
     result = run("INV-1043", registry=registry, knowledge=knowledge)
     assert result.outcome.decision is Decision.ESCALATE

@@ -26,6 +26,7 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "pytest-mock>=3.12",
+    "pytest-cov>=5.0",
     "freezegun>=1.4",
     "httpx>=0.27",
 ]
@@ -40,6 +41,22 @@ packages = ["app"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# Coverage is opt-in (run `pytest --cov=app`) so single-test runs aren't gated; the
+# fail-under threshold below is enforced whenever coverage IS collected (e.g. CI).
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]
 
 [tool.ruff]
 line-length = 100
