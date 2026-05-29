@@ -4,7 +4,7 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.enums import BlockingReason, Decision
+from app.schemas.enums import BlockingReason, Decision, LineCharge
 from app.schemas.invoice import InvoiceLineItem, VendorInvoice
 from app.schemas.outcome import ValidationOutcome
 
@@ -14,6 +14,28 @@ def test_line_item_rejects_bad_arithmetic():
         InvoiceLineItem(
             line_no=1, description="x", quantity=Decimal("2"),
             unit_price=Decimal("5.00"), line_total=Decimal("9.00"),
+        )
+
+
+def test_line_item_charge_type_defaults_to_good():
+    line = InvoiceLineItem(
+        line_no=1, description="x", quantity=Decimal("2"),
+        unit_price=Decimal("5.00"), line_total=Decimal("10.00"),
+    )
+    assert line.charge_type is LineCharge.GOOD
+
+
+def test_charge_line_still_enforces_arithmetic():
+    # the line_total == quantity×unit_price invariant holds for charge lines too
+    InvoiceLineItem(
+        line_no=1, description="Freight", quantity=Decimal("1"),
+        unit_price=Decimal("75.00"), line_total=Decimal("75.00"), charge_type=LineCharge.FREIGHT,
+    )
+    with pytest.raises(ValidationError):
+        InvoiceLineItem(
+            line_no=1, description="Freight", quantity=Decimal("1"),
+            unit_price=Decimal("75.00"), line_total=Decimal("70.00"),
+            charge_type=LineCharge.FREIGHT,
         )
 
 

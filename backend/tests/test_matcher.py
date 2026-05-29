@@ -7,7 +7,7 @@ from decimal import Decimal
 from app.orchestrator.envelope import MultiAgentEnvelope, SpecialistResult
 from app.orchestrator.roles import INVOICE_EXTRACTOR
 from app.orchestrator.specialists.po_grn_matcher import PoGrnMatcher
-from app.schemas.enums import LineStatus
+from app.schemas.enums import LineCharge, LineStatus
 from app.schemas.invoice import InvoiceLineItem, VendorInvoice
 from app.schemas.policy import PolicyBundle
 from app.schemas.reference import GoodsReceiptNote, GRNLine, POLine, PurchaseOrder
@@ -96,6 +96,26 @@ def test_vendor_sku_resolves_via_alias():
     assert line.resolved_sku == "WIDGET-A"
     assert line.alias_unresolved is False
     assert line.status is LineStatus.MATCHED
+
+
+def test_charge_line_skips_three_way_match():
+    # a freight line has no PO/GRN counterpart — it must not be matched or flagged
+    freight = InvoiceLineItem(
+        line_no=1, description="Freight", quantity=Decimal("1"),
+        unit_price=Decimal("75.00"), line_total=Decimal("75.00"), charge_type=LineCharge.FREIGHT,
+    )
+    invoice = VendorInvoice(
+        vendor_name="Globex", invoice_number="INV-F", invoice_date=date(2026, 5, 20),
+        currency="USD", subtotal=Decimal("75.00"), tax_total=Decimal("0"), total=Decimal("75.00"),
+        po_ref="PO-5000", grn_ref="GRN-7000", line_items=[freight],
+    )
+    matcher = PoGrnMatcher(_FakeKnowledge(PO, _FULL_GRN))
+    line = matcher.run(_envelope(invoice)).payload.lines[0]
+    assert line.status is LineStatus.MATCHED
+    assert line.within_tolerance is True
+    assert line.over_billed is False
+    assert line.po_line_idx is None
+    assert line.note is not None
 
 
 def test_unknown_vendor_sku_flags_alias_unresolved():

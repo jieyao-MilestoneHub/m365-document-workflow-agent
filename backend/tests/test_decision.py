@@ -3,7 +3,14 @@ from datetime import date
 from decimal import Decimal
 
 from app.orchestrator.decision import evaluate_outcome
-from app.schemas.enums import BlockingReason, Decision, LineStatus, MatchStatus, Severity
+from app.schemas.enums import (
+    BlockingReason,
+    Decision,
+    LineCharge,
+    LineStatus,
+    MatchStatus,
+    Severity,
+)
 from app.schemas.invoice import InvoiceLineItem, VendorInvoice
 from app.schemas.match import LineMatch, ThreeWayMatchReport
 from app.schemas.policy import PolicyBundle
@@ -154,6 +161,45 @@ def test_tax_discrepancy_holds(policy):
     )
     assert outcome.decision is Decision.HOLD
     assert BlockingReason.TAX_DISCREPANCY in outcome.blocking_reasons
+
+
+def _invoice_with_freight(freight_total: str) -> VendorInvoice:
+    freight = Decimal(freight_total)
+    return VendorInvoice(
+        vendor_name="Globex", invoice_number="INV-F", invoice_date=date(2026, 5, 20),
+        currency="USD", subtotal=Decimal("100.00") + freight, tax_total=Decimal("0"),
+        total=Decimal("100.00") + freight,
+        line_items=[
+            InvoiceLineItem(
+                line_no=1, description="Widget", quantity=Decimal("1"),
+                unit_price=Decimal("100.00"), line_total=Decimal("100.00"),
+            ),
+            InvoiceLineItem(
+                line_no=2, description="Freight", quantity=Decimal("1"),
+                unit_price=freight, line_total=freight, charge_type=LineCharge.FREIGHT,
+            ),
+        ],
+    )
+
+
+def test_freight_over_tolerance_holds(policy):
+    invoice = _invoice_with_freight("75.00")  # default freight_tolerance is 25.00
+    outcome = evaluate_outcome(
+        invoice=invoice, match=_matched_report("INV-F"), variance=_clean_variance("INV-F"),
+        posting=balanced_posting("INV-F"), policy=policy,
+    )
+    assert outcome.decision is Decision.HOLD
+    assert BlockingReason.UNPLANNED_CHARGE in outcome.blocking_reasons
+
+
+def test_freight_within_tolerance_passes(policy):
+    invoice = _invoice_with_freight("10.00")  # below the 25.00 freight_tolerance
+    outcome = evaluate_outcome(
+        invoice=invoice, match=_matched_report("INV-F"), variance=_clean_variance("INV-F"),
+        posting=balanced_posting("INV-F"), policy=policy,
+    )
+    assert outcome.decision is Decision.PASS
+    assert BlockingReason.UNPLANNED_CHARGE not in outcome.blocking_reasons
 
 
 def test_empty_line_items_escalates_quality_fail(policy):

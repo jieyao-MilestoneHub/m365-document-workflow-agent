@@ -25,6 +25,7 @@ SCENARIOS = [
     ("INV-1056", ESCALATE, BlockingReason.DUPLICATE_INVOICE),      # already posted
     ("INV-1057", PASS, None),                                       # slot-fill clears it
     ("INV-1058", HOLD, BlockingReason.VENDOR_ON_HOLD_LIST),        # vendor on hold
+    ("INV-1059", HOLD, BlockingReason.UNPLANNED_CHARGE),           # freight charge over tolerance
 ]
 
 
