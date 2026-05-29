@@ -11,17 +11,22 @@ CEILING = GuardrailCeiling(max_tool_calls=5, max_role_visits=2, cycle_threshold=
 
 
 def test_tool_call_budget_allows_under_cap():
-    assert check_tool_calls(BudgetSnapshot(tool_calls_used=4), CEILING).ok is True
+    verdict = check_tool_calls(BudgetSnapshot(tool_calls_used=4), CEILING)
+    assert verdict.ok is True
+    assert verdict.code is None
 
 
 def test_tool_call_budget_vetoes_at_cap():
     verdict = check_tool_calls(BudgetSnapshot(tool_calls_used=5), CEILING)
+    assert verdict.ok is False
     assert verdict.code == "TOOL_CALL_BUDGET_EXCEEDED"
 
 
 def test_role_visit_cap_vetoes():
     snap = BudgetSnapshot(role_visits={"matcher": 2})
-    assert check_role_visit("matcher", snap, CEILING).ok is False
+    verdict = check_role_visit("matcher", snap, CEILING)
+    assert verdict.ok is False
+    assert verdict.code == "ROLE_VISIT_CAP_EXCEEDED"
 
 
 def test_cycle_detected_on_repeated_pair():

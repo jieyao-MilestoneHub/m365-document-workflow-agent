@@ -25,7 +25,13 @@ SCENARIOS = [
     ("INV-1056", ESCALATE, BlockingReason.DUPLICATE_INVOICE),      # already posted
     ("INV-1057", PASS, None),                                       # slot-fill clears it
     ("INV-1058", HOLD, BlockingReason.VENDOR_ON_HOLD_LIST),        # vendor on hold
+    ("INV-1059", HOLD, BlockingReason.UNPLANNED_CHARGE),           # freight charge over tolerance
+    ("INV-1060", ESCALATE, BlockingReason.UOM_MISMATCH),           # billed in case vs PO ea, no factor
 ]
+
+
+#: just the clean scenarios, flattened out of SCENARIOS so each is its own test case
+PASS_SCENARIOS = [inv for inv, decision, _ in SCENARIOS if decision is PASS]
 
 
 @pytest.mark.parametrize("invoice_id, decision, reason", SCENARIOS)
@@ -36,7 +42,7 @@ def test_scenario(invoice_id, decision, reason):
         assert reason in outcome.blocking_reasons
 
 
-def test_pass_scenarios_have_no_blocking_reasons():
-    for invoice_id, decision, _ in SCENARIOS:
-        if decision is PASS:
-            assert run(invoice_id).outcome.blocking_reasons == []
+@pytest.mark.parametrize("invoice_id", PASS_SCENARIOS)
+def test_pass_scenario_has_no_blocking_reasons(invoice_id):
+    # a clean invoice must carry an empty ledger — not merely a PASS verdict
+    assert run(invoice_id).outcome.blocking_reasons == []

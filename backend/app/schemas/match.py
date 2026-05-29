@@ -34,6 +34,8 @@ class LineMatch(BaseModel):
     resolved_sku: str | None = None
     #: True when only a description fallback matched an unknown vendor SKU (needs human confirm)
     alias_unresolved: bool = False
+    #: True when the invoice UOM differs from the PO UOM with no conversion factor (high-$ risk)
+    uom_mismatch: bool = False
     note: str | None = None
 
 

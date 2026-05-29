@@ -11,6 +11,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from .enums import LineCharge
 from .money import money_close
 
 _INVOICE_NUMBER_RE = re.compile(r"^[A-Za-z0-9_\-./]{1,128}$")
@@ -28,6 +29,15 @@ class InvoiceLineItem(BaseModel):
     unit_price: Decimal
     line_total: Decimal
     tax_rate: Decimal | None = None
+    #: what this line is. Only ``good`` lines are three-way matched; charge lines
+    #: (freight/misc/discount) are routed and governed separately. Defaults to ``good``
+    #: so existing fixtures/payloads are unaffected.
+    charge_type: LineCharge = LineCharge.GOOD
+    #: unit the line is billed in (e.g. "ea", "case"). When it differs from the PO unit,
+    #: a ``uom_factor`` must convert it to the PO unit or the line cannot be reconciled.
+    unit_of_measure: str | None = None
+    #: multiplier converting this line's UOM to the PO/GRN base UOM (qty × factor = base qty)
+    uom_factor: Decimal = Decimal("1")
 
     @model_validator(mode="after")
     def _check_line_arithmetic(self) -> "InvoiceLineItem":

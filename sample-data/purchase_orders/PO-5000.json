@@ -3,7 +3,7 @@
   "vendor_name": "Globex",
   "currency": "USD",
   "lines": [
-    { "sku": "WIDGET-A", "description": "Widget A", "quantity": "10", "unit_price": "95.00" },
-    { "sku": "WIDGET-B", "description": "Widget B", "quantity": "5", "unit_price": "20.00" }
+    { "sku": "WIDGET-A", "description": "Widget A", "quantity": "10", "unit_price": "95.00", "unit_of_measure": "ea" },
+    { "sku": "WIDGET-B", "description": "Widget B", "quantity": "5", "unit_price": "20.00", "unit_of_measure": "ea" }
   ]
 }

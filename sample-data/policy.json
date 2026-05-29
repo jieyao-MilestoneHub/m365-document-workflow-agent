@@ -15,6 +15,7 @@
     "ap_liability": "2100",
     "expense_fallback": "5000",
     "tax": "1360",
+    "freight_gl_account": "5800",
     "overrides": {}
   },
   "vendors": {
@@ -22,7 +23,8 @@
     "hold_on_vendors": ["Contoso"],
     "gray_zone_vendors": ["Acme-Lite"]
   },
-  "valid_gl_accounts": ["2100", "5000", "1360"],
+  "freight_tolerance": "25.00",
+  "valid_gl_accounts": ["2100", "5000", "1360", "5800"],
   "closed_periods": [],
   "sku_aliases": { "GLX-WA-01": "WIDGET-A" }
 }

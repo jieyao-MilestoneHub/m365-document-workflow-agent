@@ -6,10 +6,13 @@ guarantees a variance never silently auto-posts.
 """
 from __future__ import annotations
 
+from decimal import Decimal
+
 from app.schemas.enums import (
     ESCALATE_REASONS,
     BlockingReason,
     Decision,
+    LineCharge,
     MatchStatus,
     Severity,
 )
@@ -45,6 +48,8 @@ _RESOLUTIONS: dict[BlockingReason, str] = {
     BlockingReason.DUPLICATE_INVOICE: "Invoice already posted; reject as a duplicate payment.",
     BlockingReason.TAX_DISCREPANCY: "Reconcile the invoice tax against the line tax rates.",
     BlockingReason.OVER_BILLED_VS_RECEIPT: "Billed quantity exceeds received; confirm receipt before posting.",
+    BlockingReason.UNPLANNED_CHARGE: "Unplanned freight/misc charge above tolerance; confirm with procurement.",
+    BlockingReason.UOM_MISMATCH: "Invoice unit of measure differs from the PO; confirm the conversion factor.",
     BlockingReason.SKU_ALIAS_UNRESOLVED: "Confirm the vendor-SKU to internal-SKU mapping.",
 }
 
@@ -118,6 +123,23 @@ def evaluate_outcome(
                 _ticket(inv_no, BlockingReason.VARIANCE_OUTSIDE_TOLERANCE, Severity.MEDIUM, out_of_tol)
             )
 
+    # --- Unplanned charges (freight/misc above tolerance) → hold --------------
+    if invoice is not None:
+        charge_lines = [
+            li for li in invoice.line_items
+            if li.charge_type in (LineCharge.FREIGHT, LineCharge.MISC)
+        ]
+        charge_total = sum((li.line_total for li in charge_lines), Decimal("0"))
+        if charge_total > policy.freight_tolerance:
+            tickets.append(
+                _ticket(
+                    inv_no, BlockingReason.UNPLANNED_CHARGE, Severity.MEDIUM,
+                    [li.line_no for li in charge_lines],
+                    evidence={"charge_total": str(charge_total),
+                              "freight_tolerance": str(policy.freight_tolerance)},
+                )
+            )
+
     # --- Three-way match completeness -----------------------------------------
     if match is not None and match.match_status in (MatchStatus.MISSING_PO, MatchStatus.MISSING_GRN):
         tickets.append(_ticket(inv_no, BlockingReason.THREE_WAY_MATCH_INCOMPLETE, Severity.MEDIUM))
@@ -133,6 +155,11 @@ def evaluate_outcome(
         if alias_lines:
             tickets.append(
                 _ticket(inv_no, BlockingReason.SKU_ALIAS_UNRESOLVED, Severity.LOW, alias_lines)
+            )
+        uom_lines = [m.invoice_line_no for m in match.lines if m.uom_mismatch]
+        if uom_lines:
+            tickets.append(
+                _ticket(inv_no, BlockingReason.UOM_MISMATCH, Severity.HIGH, uom_lines)
             )
 
     # --- Posting / GL ----------------------------------------------------------

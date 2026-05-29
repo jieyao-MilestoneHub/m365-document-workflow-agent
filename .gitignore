@@ -6,6 +6,10 @@ venv/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
 dist/
 build/
 
@@ -32,6 +36,7 @@ env/.env.*.user
 # Scratch / working notes (not for public history)
 tmp-*
 *.scratch.md
+PLAN.md
 
 # OS / editor
 .DS_Store

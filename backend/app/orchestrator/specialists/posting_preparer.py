@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from app.schemas.enums import PostingDirection
+from app.schemas.enums import LineCharge, PostingDirection
 from app.schemas.money import money_close
 from app.schemas.posting import PostingDraft, PostingLine
 
@@ -33,8 +33,13 @@ class PostingPreparer:
             )
         ]
         for li in invoice.line_items:
+            # Freight/misc charges debit the freight account, not goods expense.
+            if li.charge_type in (LineCharge.FREIGHT, LineCharge.MISC):
+                account = gl.freight_gl_account
+            else:
+                account = gl.expense_account(li.sku)
             lines.append(PostingLine(
-                gl_account=gl.expense_account(li.sku),
+                gl_account=account,
                 direction=PostingDirection.DEBIT, amount=li.line_total,
                 memo=li.description[:80],
             ))

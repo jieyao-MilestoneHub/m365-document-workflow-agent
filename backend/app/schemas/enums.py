@@ -21,6 +21,19 @@ class LineStatus(str, Enum):
     UNMATCHED = "unmatched"
 
 
+class LineCharge(str, Enum):
+    """What an invoice line represents for posting/matching purposes.
+
+    Only ``good`` lines are subject to three-way match against PO/GRN. Charge lines
+    (freight, misc, discount) have no PO/GRN counterpart and are routed/governed separately.
+    """
+
+    GOOD = "good"
+    FREIGHT = "freight"
+    MISC = "misc"
+    DISCOUNT = "discount"
+
+
 class MatchStatus(str, Enum):
     """Roll-up status of the whole three-way match."""
 
@@ -79,6 +92,8 @@ class BlockingReason(str, Enum):
     VENDOR_GRAY_ZONE = "VENDOR_GRAY_ZONE"
     # Line-level / data exceptions
     OVER_BILLED_VS_RECEIPT = "OVER_BILLED_VS_RECEIPT"
+    UNPLANNED_CHARGE = "UNPLANNED_CHARGE"
+    UOM_MISMATCH = "UOM_MISMATCH"
     SKU_ALIAS_UNRESOLVED = "SKU_ALIAS_UNRESOLVED"
     CURRENCY_MISMATCH = "CURRENCY_MISMATCH"
     DUPLICATE_INVOICE = "DUPLICATE_INVOICE"
@@ -105,5 +120,6 @@ ESCALATE_REASONS: frozenset[BlockingReason] = frozenset(
         BlockingReason.SPECIALIST_FAILED,
         BlockingReason.CURRENCY_MISMATCH,
         BlockingReason.DUPLICATE_INVOICE,
+        BlockingReason.UOM_MISMATCH,
     }
 )

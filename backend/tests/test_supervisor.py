@@ -4,19 +4,21 @@ from __future__ import annotations
 from app.orchestrator.envelope import SpecialistResult
 from app.orchestrator.guardrails import GuardrailCeiling
 from app.orchestrator.roles import INVOICE_EXTRACTOR, PO_GRN_MATCHER
-from app.runner import DEFAULT_DATA_DIR, default_registry, run
+from app.runner import default_registry, run
 from app.schemas.enums import BlockingReason, Decision
 
 
 def test_clean_invoice_passes():
     result = run("INV-1043")
     assert result.outcome.decision is Decision.PASS
+    assert result.outcome.blocking_reasons == []
 
 
 def test_clean_invoice_posting_is_balanced():
     result = run("INV-1043")
     posting = result.envelope.payload_for("posting_preparer")
     assert posting.debit_total() == posting.credit_total()
+    assert posting.debit_total() > 0  # a 0==0 posting is "balanced" but empty/wrong
 
 
 def test_variance_invoice_holds():
@@ -33,7 +35,8 @@ def test_variance_invoice_triggers_peer_review():
 def test_match_report_carries_citations():
     result = run("INV-1042")
     match = result.envelope.payload_for(PO_GRN_MATCHER)
-    assert len(match.citations) >= 1
+    # exactly one citation each for the PO and the GRN looked up (deterministic fixtures)
+    assert [c.document_id for c in match.citations] == ["PO-5000", "GRN-7000"]
 
 
 def test_run_emits_finalize_event():
@@ -43,7 +46,8 @@ def test_run_emits_finalize_event():
 
 def test_audit_trail_is_populated():
     result = run("INV-1043")
-    assert len(result.envelope.handoff_history) >= 5
+    # clean path: extractor → matcher → variance → posting → reviewer → finalize (deterministic)
+    assert len(result.envelope.handoff_history) == 6
 
 
 class _FailingExtractor:
@@ -53,8 +57,8 @@ class _FailingExtractor:
         return SpecialistResult(role=self.role, error="boom")
 
 
-def test_failed_specialist_is_retried_then_escalated():
-    registry, knowledge = default_registry(DEFAULT_DATA_DIR)
+def test_failed_specialist_is_retried_then_escalated(sample_data_dir):
+    registry, knowledge = default_registry(sample_data_dir)
     registry[INVOICE_EXTRACTOR] = _FailingExtractor()
     result = run("INV-1043", registry=registry, knowledge=knowledge)
     assert result.outcome.decision is Decision.ESCALATE
