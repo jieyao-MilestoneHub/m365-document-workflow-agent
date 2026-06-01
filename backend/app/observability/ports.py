@@ -1,12 +1,9 @@
-"""Narrow telemetry Protocols — three independently substitutable ports.
+"""Telemetry Protocols — three independent ports so a call site can depend on only the
+verbs it actually uses (e.g. a specialist that only emits metrics imports ``MetricsPort``
+and nothing else, while the supervisor takes all three).
 
-Split per ISP: a specialist that only emits metrics depends on :class:`MetricsPort` and
-nothing else; the supervisor (which traces, logs, and meters) accepts all three. There is
-deliberately no ``ObservabilityPort`` superset — bundling the three would force callers to
-import abstractions they never use.
-
-Concrete adapters are wired in :mod:`app.observability.config`; tests can supply any object
-that conforms structurally (Protocols are ``runtime_checkable``).
+Concrete adapters are wired in :mod:`app.observability.config`; tests can supply any
+object that conforms structurally (Protocols are ``runtime_checkable``).
 """
 from __future__ import annotations
 
@@ -46,7 +43,7 @@ class TracerPort(Protocol):
 
 @runtime_checkable
 class MetricsPort(Protocol):
-    """Counter increment + histogram observation. Two verbs, no more (ISP)."""
+    """Counter increment and histogram observation."""
 
     def incr(
         self,

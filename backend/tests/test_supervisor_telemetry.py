@@ -1,9 +1,8 @@
-"""PR3 — supervisor span hierarchy + per-role metrics.
+"""Supervisor span hierarchy and per-role metrics.
 
-Uses the session-wide in-memory OpenTelemetry providers installed by
-``conftest.otel_in_memory_providers`` so the Application Insights wire contract can be
-asserted without an Azure subscription. The Azure Monitor exporter consumes the same
-OTel ``Span`` / ``Counter`` / ``Histogram`` shapes — passing here means the production
+Verified against the session-wide in-memory OpenTelemetry providers installed by
+``conftest.otel_in_memory_providers`` — the Azure Monitor exporter consumes the same
+``Span`` / ``Counter`` / ``Histogram`` shapes, so passing here means the production
 exporter will see the same data.
 """
 from __future__ import annotations
@@ -100,3 +99,21 @@ def test_variance_path_records_hold_decision(otel_recording):
     _, reader = otel_recording
     run("INV-1042")
     assert "hold" in _decisions_emitted(reader)
+
+
+def test_current_trace_and_span_id_returns_none_outside_span(otel_recording):
+    # Outside any active ``with start_span(...)`` block, the helper must surface (None, None)
+    # so callers (TraceEvent emit) can record absence rather than fabricate IDs.
+    _ = otel_recording
+    from app.observability.tracing import current_trace_and_span_id
+
+    assert current_trace_and_span_id() == (None, None)
+
+
+def test_set_status_error_is_noop_for_none_span(otel_recording):
+    # Failed specialists may pass ``None`` when instrumentation is disabled; the helper
+    # must accept that without raising.
+    _ = otel_recording
+    from app.observability.tracing import set_status_error
+
+    set_status_error(None, "should not raise")

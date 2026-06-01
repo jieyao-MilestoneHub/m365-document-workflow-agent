@@ -1,7 +1,7 @@
-"""PR1 tests — observability config + ports surface + metrics facade.
+"""Tests for app.observability.config, the protocol surface, and the metrics facade.
 
-These tests must pass with and without the optional ``observability`` extra installed.
-Pieces that require ``opentelemetry`` or ``redactkit`` are gated via ``importorskip``.
+Tests pass with and without the optional ``observability`` extra installed; pieces that
+require ``opentelemetry`` or ``redactkit`` are gated via ``importorskip``.
 """
 from __future__ import annotations
 
@@ -51,14 +51,21 @@ def test_configure_returns_true_when_enabled_without_optional_deps(monkeypatch):
     assert pytest.importorskip("os") and __import__("os").environ.get("OTEL_SERVICE_NAME")
 
 
-def test_configure_never_raises_when_agent_framework_missing(monkeypatch):
-    # Defensive: the agent_framework import is best-effort. Make sure that even if some
-    # exotic import error occurs, configure_observability swallows it.
+def test_configure_is_idempotent(monkeypatch):
+    pytest.importorskip("redactkit")
     monkeypatch.setenv("ENABLE_INSTRUMENTATION", "true")
-    # Don't try to actually break sys.modules — just ensure the second call is also safe
-    # (idempotent attachment of handlers, no side-effect cascade).
-    assert configure_observability() is True
-    assert configure_observability() is True
+    from app.observability.redaction import RedactingFilter
+
+    root = logging.getLogger()
+    handler = logging.StreamHandler()
+    root.addHandler(handler)
+    try:
+        for _ in range(3):
+            assert configure_observability() is True
+        attached = [f for f in handler.filters if isinstance(f, RedactingFilter)]
+        assert len(attached) == 1
+    finally:
+        root.removeHandler(handler)
 
 
 def test_ports_are_runtime_checkable():
@@ -99,23 +106,16 @@ def test_metrics_facade_safe_without_opentelemetry(monkeypatch):
     metrics.record_decision(decision="pass")
 
 
-# NOTE: the "facade routes through OpenTelemetry when present" assertion now lives in
-# tests/test_supervisor_telemetry.py, which exercises the entire pipeline end-to-end
-# against the shared in-memory provider installed by conftest.otel_in_memory_providers.
-# Duplicating that wiring here would race the one-shot global provider install.
-
-
 def test_configure_attaches_redacting_filter_when_redactkit_present(monkeypatch):
     pytest.importorskip("redactkit")
     monkeypatch.setenv("ENABLE_INSTRUMENTATION", "true")
+    from app.observability.redaction import RedactingFilter
 
-    # Ensure root has at least one handler so the filter attachment is observable.
     root = logging.getLogger()
     handler = logging.StreamHandler()
     root.addHandler(handler)
     try:
-        # PR1 leaves _attach_redaction_filter a no-op until PR2 lands the redaction module.
-        # We still assert configure_observability returns True and doesn't crash.
         assert configure_observability() is True
+        assert any(isinstance(f, RedactingFilter) for f in handler.filters)
     finally:
         root.removeHandler(handler)

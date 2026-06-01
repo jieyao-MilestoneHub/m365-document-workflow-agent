@@ -1,16 +1,14 @@
-"""Redaction filter — adapt :mod:`redactkit` for stdlib :mod:`logging`.
+"""Logging filter that masks secrets and invoice-domain values.
 
-Why an adapter at the logger layer rather than at call sites: handlers and third-party
-libraries (uvicorn, the Azure Monitor exporter, FastAPI access logs) all emit
-:class:`logging.LogRecord` objects through the root logger. A single
-:class:`logging.Filter` attached once at startup catches them uniformly (Open/Closed —
-existing handlers gain redaction without modification).
+Attaching one filter at the root logger covers every handler (including ones added later
+by exporters and third-party libraries such as uvicorn and the Azure Monitor exporter).
 
-Invoice domain coverage: redactkit's built-ins are key-pattern based (``password=``,
-``token=``, ...) and do not natively detect free-form vendor names, tax IDs, or monetary
-amounts. We supplement with two regex stopgaps below; the upstream gap is tracked at
-https://github.com/CoreNovus/redactkit/issues so the local code can be deleted once
-detectors ship.
+Coverage:
+
+* ``redactkit``'s built-in key-pattern detectors (``password=``, ``token=``, ...) plus
+  the extra invoice keys listed in :data:`_INVOICE_KEY_TERMS`.
+* Local regex masks for monetary amounts and tax IDs, since ``redactkit`` does not
+  natively detect free-form values of those shapes.
 """
 from __future__ import annotations
 
@@ -25,7 +23,7 @@ except ImportError:  # pragma: no cover - exercised via the fallback path
     redact_text = None  # type: ignore[assignment]
 
 
-# Invoice-domain stopgaps (local, ≤ 20 lines, deletable once redactkit ships detectors).
+# Invoice-domain masks for monetary amounts and tax IDs.
 _MONEY_RE = re.compile(r"[\$£€¥]\s?\d[\d,]*(?:\.\d{1,4})?")
 _TAX_ID_RE = re.compile(r"\b(?:VAT|EIN|GSTIN|ABN|GST)\s?[A-Z]{0,3}\d{6,}\b", re.IGNORECASE)
 
@@ -44,7 +42,7 @@ def _mask_invoice_fields(text: str) -> str:
 
 
 def redact(text: str) -> str:
-    """Apply redactkit key-pattern redaction + invoice stopgap masks. Safe on any string."""
+    """Apply key-pattern redaction and invoice-domain masks. Safe on any string."""
     if redact_text is None:
         return _mask_invoice_fields(text)
     try:

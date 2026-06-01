@@ -67,10 +67,11 @@ def _try_configure_agent_framework() -> None:
 
 
 def _attach_redaction_filter() -> None:
-    """Insert :class:`RedactingFilter` on every root-logger handler (idempotent).
+    """Attach :class:`RedactingFilter` to every root-logger handler.
 
-    PR1 leaves this as a no-op when the :mod:`app.observability.redaction` module is
-    absent; PR2 introduces the filter and this function picks it up automatically.
+    Idempotent: a filter is only added if no :class:`RedactingFilter` is already present
+    on that handler. A no-op when the :mod:`app.observability.redaction` module is
+    unimportable (e.g. ``redactkit`` not installed).
     """
     try:
         from .redaction import RedactingFilter

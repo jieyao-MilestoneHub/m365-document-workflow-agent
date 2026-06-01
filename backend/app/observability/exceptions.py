@@ -1,18 +1,14 @@
-"""Domain → HTTP error translation. Pure mapper + thin FastAPI handlers.
+"""Domain errors and their translation to RFC 7807 problem+json responses.
 
-The mapping is a stateless function (:func:`translate`) — easy to unit-test, no FastAPI
-dependency at the call site. The three registered handlers are thin shells that defer to
-``translate``. This preserves SRP: domain code raises domain errors, HTTP-shape concerns
-live in one place.
+The :func:`translate` mapper is stateless and FastAPI-independent so it is straightforward
+to unit-test. Three thin handlers register on the FastAPI app and defer to ``translate``.
+Response bodies carry the ``request_id`` and ``traceparent`` from
+:mod:`app.observability.correlation`, so a client error can be cross-referenced against
+the corresponding Application Insights trace.
 
-All responses use ``application/problem+json`` (RFC 7807). The body carries the
-``request_id`` and ``traceparent`` from :mod:`app.observability.correlation`, so a client
-error can be cross-referenced against the corresponding Application Insights trace.
-
-The 500 catch-all NEVER echoes the exception message back to the client — it is logged
-(through the :class:`~app.observability.redaction.RedactingFilter`) and the client gets a
-generic detail. This closes a real gap: prior to this module, an unhandled exception
-returned Starlette's default HTML page, potentially leaking internals to the M365 client.
+The 500 catch-all never echoes the exception message back to the client: the original
+exception is logged (through :class:`~app.observability.redaction.RedactingFilter`) and
+the client receives a generic detail.
 """
 from __future__ import annotations
 
@@ -33,7 +29,7 @@ _URN_PREFIX = "urn:apthreeway"
 
 
 class AppError(Exception):
-    """Base domain error — subclasses define the HTTP shape via class attrs (LSP)."""
+    """Base domain error; subclasses set ``status_code`` / ``code`` / ``title``."""
 
     status_code: int = 500
     code: str = "internal_error"
@@ -101,7 +97,7 @@ def translate(exc: Exception, request: Request) -> JSONResponse:
     )
 
 
-# --- FastAPI handlers (thin shells over translate) -----------------------------------------
+# --- FastAPI handlers ----------------------------------------------------------------------
 
 
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:

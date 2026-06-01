@@ -1,10 +1,8 @@
-"""Observability primitives — SOLID-isolated log, trace, metrics, and error handlers.
+"""Log, trace, metrics, and error-handling primitives shared by the API and the orchestrator.
 
-The deterministic core (``app/schemas``, ``app/orchestrator/validators.py``,
-``app/orchestrator/guardrails.py``) MUST remain importable and runnable without any of the
-optional packages listed in the ``observability`` extra. Every module here is written so
-that the absence of ``opentelemetry``, ``redactkit``, or ``agent_framework`` degrades to a
-no-op rather than raising at import time.
+Each submodule degrades to a no-op when its optional dependency
+(``opentelemetry``, ``redactkit``, or ``agent_framework``) is absent, so the deterministic
+core stays importable and runnable without any cloud credentials.
 """
 from __future__ import annotations
 

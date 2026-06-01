@@ -1,15 +1,9 @@
-"""Named metric primitives — counters and one histogram, exposed via a typed facade.
+"""Named counter and histogram instruments behind a typed facade.
 
-All metric names live here. Specialists never call OTel directly: they invoke the
-facade functions (``record_specialist``, ``record_decision``, ...), which delegate to
-lazily-created OpenTelemetry instruments — or to no-op stubs when ``opentelemetry`` is
-not installed or instrumentation is disabled.
-
-Why a module of free functions instead of a class: the OTel ``MeterProvider`` is already a
-process-wide singleton; wrapping it in another class adds typing noise without isolation.
-The facade keeps the *names* in one place (Single Responsibility) and the *vocabulary*
-narrow (Interface Segregation — only two verbs leak out: counter ``add`` and histogram
-``record``, hidden behind four typed helpers).
+All metric names live here so call sites pass labels rather than name strings.
+Specialists invoke the facade functions (``record_specialist``, ``record_decision``,
+...), which delegate to lazily-created OpenTelemetry instruments — or to no-op stubs when
+``opentelemetry`` is not installed or instrumentation is disabled.
 """
 from __future__ import annotations
 
