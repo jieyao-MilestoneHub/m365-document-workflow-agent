@@ -22,6 +22,15 @@ api = [
     "uvicorn>=0.29",
     "sse-starlette>=2.1",
 ]
+# Observability extra: OpenTelemetry SDK + Azure Monitor exporter + log redaction. None of
+# these are required by the deterministic core; the observability module no-ops cleanly
+# when they (or the ENABLE_INSTRUMENTATION env var) are absent.
+observability = [
+    "opentelemetry-api>=1.27",
+    "opentelemetry-sdk>=1.27",
+    "azure-monitor-opentelemetry>=1.6",
+    "redactkit>=0.1",
+]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
