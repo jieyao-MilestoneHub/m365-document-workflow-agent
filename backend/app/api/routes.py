@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
+
+from app.observability import NotFoundError
 
 from . import service
 from .models import CreateJobRequest, DecisionRequest
@@ -40,7 +42,7 @@ def create_job(
     try:
         record = service.run_job(body.invoice_ref, base_dir=base_dir)
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise NotFoundError(str(exc)) from exc
     service.store_job(store, record)
     return record.detail
 
@@ -49,7 +51,7 @@ def create_job(
 def get_job(job_id: str, store: JobStore = Depends(get_store)) -> dict:
     record = store.get(job_id)
     if record is None:
-        raise HTTPException(status_code=404, detail=f"unknown job {job_id}")
+        raise NotFoundError(f"unknown job {job_id}")
     return record.detail
 
 
@@ -57,7 +59,7 @@ def get_job(job_id: str, store: JobStore = Depends(get_store)) -> dict:
 def stream(job_id: str, store: JobStore = Depends(get_store)):
     record = store.get(job_id)
     if record is None:
-        raise HTTPException(status_code=404, detail=f"unknown job {job_id}")
+        raise NotFoundError(f"unknown job {job_id}")
     return stream_job(record)
 
 
@@ -67,6 +69,6 @@ def decide(
 ) -> dict:
     record = store.get(job_id)
     if record is None:
-        raise HTTPException(status_code=404, detail=f"unknown job {job_id}")
+        raise NotFoundError(f"unknown job {job_id}")
     service.apply_decision(record, action=body.action, reviewer=body.reviewer, note=body.note)
     return record.detail

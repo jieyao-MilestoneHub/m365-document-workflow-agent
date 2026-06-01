@@ -10,13 +10,37 @@ from __future__ import annotations
 
 from . import metrics
 from .config import configure_observability, is_enabled
+from .correlation import (
+    REQUEST_ID_HEADER,
+    TRACEPARENT_HEADER,
+    CorrelationMiddleware,
+    request_id,
+    traceparent,
+)
+from .exceptions import (
+    AppError,
+    NotFoundError,
+    UpstreamError,
+    ValidationError,
+    register_exception_handlers,
+)
 from .ports import LoggerPort, MetricsPort, TracerPort
 
 __all__ = [
+    "AppError",
+    "CorrelationMiddleware",
     "LoggerPort",
     "MetricsPort",
+    "NotFoundError",
+    "REQUEST_ID_HEADER",
+    "TRACEPARENT_HEADER",
     "TracerPort",
+    "UpstreamError",
+    "ValidationError",
     "configure_observability",
     "is_enabled",
     "metrics",
+    "register_exception_handlers",
+    "request_id",
+    "traceparent",
 ]
