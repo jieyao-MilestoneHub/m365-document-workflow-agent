@@ -75,6 +75,15 @@ class Clock(Protocol):
 
     def now_iso(self) -> str: ...
 
+    def monotonic(self) -> float:
+        """Monotonic seconds for latency measurement.
+
+        ``now_iso`` returns a wall-clock string and is unsuitable for measuring duration
+        (NTP corrections can move wall clocks backwards). This separate clock yields a
+        strictly non-decreasing float per call.
+        """
+        ...
+
 
 @runtime_checkable
 class IdGen(Protocol):

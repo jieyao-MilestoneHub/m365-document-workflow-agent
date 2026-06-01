@@ -10,6 +10,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from app.observability import metrics
+from app.observability.tracing import current_trace_and_span_id, set_status_error, start_span
 from app.schemas.enums import BlockingReason, Decision, Severity
 from app.schemas.outcome import ExceptionTicket, ValidationOutcome
 
@@ -29,6 +31,11 @@ class TraceEvent:
     role: str
     detail: str
     ts: str
+    # Optional — populated only when ENABLE_INSTRUMENTATION is on and OTel produces a
+    # valid span context. The frontend zod schema strips unknown keys, so emitting these
+    # is backward-compatible with the existing SSE consumer.
+    trace_id: str | None = None
+    span_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -66,82 +73,122 @@ class Supervisor:
         events: list[TraceEvent] = []
 
         def emit(kind: str, role: str, detail: str) -> None:
-            event = TraceEvent(len(events) + 1, kind, role, detail, self._clock.now_iso())
+            tid, sid = current_trace_and_span_id()
+            event = TraceEvent(
+                len(events) + 1, kind, role, detail, self._clock.now_iso(), tid, sid
+            )
             events.append(event)
             if self._on_event is not None:
                 self._on_event(event)
 
-        for _ in range(self._max_iterations):
-            action = self._brain.next_action(envelope)
+        with start_span("invoke_supervisor", attrs={"invoice.ref": envelope.invoice_ref}):
+            for _ in range(self._max_iterations):
+                action = self._brain.next_action(envelope)
 
-            if isinstance(action, Finalize):
-                outcome = envelope.payload_for(EXCEPTION_REVIEWER) or self._engine_outcome(
-                    envelope, BlockingReason.MISSING_THREE_WAY_MATCH_UPSTREAM, "no reviewer outcome"
-                )
-                envelope = self._handoff(envelope, SUPERVISOR, "FINALIZE", outcome.decision.value, 0)
-                emit("finalize", SUPERVISOR, outcome.decision.value)
-                return SupervisorRun(envelope, outcome, tuple(events))
-
-            if isinstance(action, Escalate):
-                outcome = self._engine_outcome(
-                    envelope, BlockingReason.SPECIALIST_FAILED, action.summary
-                )
-                envelope = self._handoff(envelope, SUPERVISOR, action.reason_code, action.summary, 0)
-                emit("escalate", SUPERVISOR, action.summary)
-                return SupervisorRun(envelope, outcome, tuple(events))
-
-            if isinstance(action, RequestInput):
-                answer = (
-                    self._human.answer(
-                        field=action.field, prompt=action.prompt, candidates=list(action.candidates)
-                    )
-                    if self._human is not None
-                    else None
-                )
-                if answer is not None:
-                    envelope = envelope.with_field_correction(
-                        INVOICE_EXTRACTOR, action.field, answer
-                    )
-                    detail = f"{action.field} = {answer}"
-                else:
-                    envelope = envelope.with_requested_input(action.field)
-                    detail = f"{action.field} unanswered"
-                envelope = self._handoff(envelope, INVOICE_EXTRACTOR, "REQUEST_INPUT", detail, 0)
-                emit("request_input", INVOICE_EXTRACTOR, detail)
-                continue
-
-            if isinstance(action, PeerReview):
-                text = self._peer_review_text(action.subject_role)
-                envelope = envelope.with_peer_review(
-                    PeerReviewResponse(action.reviewer, action.subject_role, "accept", text)
-                )
-                envelope = self._handoff(envelope, action.reviewer, "PEER_REVIEW", action.claim, 0)
-                emit("peer_review", action.reviewer, text)
-                continue
-
-            if isinstance(action, Delegate):
-                verdict = preflight(action.role, envelope.budget_snapshot(), self._ceiling)
-                if not verdict.ok:
-                    outcome = self._engine_outcome(
-                        envelope, BlockingReason.SUPERVISOR_GUARDRAIL_VETO, verdict.detail
+                if isinstance(action, Finalize):
+                    outcome = envelope.payload_for(EXCEPTION_REVIEWER) or self._engine_outcome(
+                        envelope,
+                        BlockingReason.MISSING_THREE_WAY_MATCH_UPSTREAM,
+                        "no reviewer outcome",
                     )
                     envelope = self._handoff(
-                        envelope, action.role, verdict.code or "VETO", verdict.detail, 0
+                        envelope, SUPERVISOR, "FINALIZE", outcome.decision.value, 0
                     )
-                    emit("veto", action.role, f"{verdict.code}: {verdict.detail}")
+                    emit("finalize", SUPERVISOR, outcome.decision.value)
+                    metrics.record_decision(decision=outcome.decision.value)
                     return SupervisorRun(envelope, outcome, tuple(events))
 
-                attempt = envelope.visited(action.role)
-                result = self._registry[action.role].run(envelope)
-                envelope = envelope.with_result(result)
-                envelope = self._handoff(envelope, action.role, "DELEGATE", action.reason, attempt)
-                emit("delegate_result", action.role, result.summary or result.error or "ok")
-                continue
+                if isinstance(action, Escalate):
+                    outcome = self._engine_outcome(
+                        envelope, BlockingReason.SPECIALIST_FAILED, action.summary
+                    )
+                    envelope = self._handoff(
+                        envelope, SUPERVISOR, action.reason_code, action.summary, 0
+                    )
+                    emit("escalate", SUPERVISOR, action.summary)
+                    metrics.record_decision(decision=outcome.decision.value)
+                    return SupervisorRun(envelope, outcome, tuple(events))
 
-        outcome = self._engine_outcome(
-            envelope, BlockingReason.SUPERVISOR_GUARDRAIL_VETO, "max iterations exceeded"
-        )
-        return SupervisorRun(envelope, outcome, tuple(events))
+                if isinstance(action, RequestInput):
+                    answer = (
+                        self._human.answer(
+                            field=action.field,
+                            prompt=action.prompt,
+                            candidates=list(action.candidates),
+                        )
+                        if self._human is not None
+                        else None
+                    )
+                    if answer is not None:
+                        envelope = envelope.with_field_correction(
+                            INVOICE_EXTRACTOR, action.field, answer
+                        )
+                        detail = f"{action.field} = {answer}"
+                    else:
+                        envelope = envelope.with_requested_input(action.field)
+                        detail = f"{action.field} unanswered"
+                    envelope = self._handoff(
+                        envelope, INVOICE_EXTRACTOR, "REQUEST_INPUT", detail, 0
+                    )
+                    emit("request_input", INVOICE_EXTRACTOR, detail)
+                    continue
+
+                if isinstance(action, PeerReview):
+                    text = self._peer_review_text(action.subject_role)
+                    envelope = envelope.with_peer_review(
+                        PeerReviewResponse(action.reviewer, action.subject_role, "accept", text)
+                    )
+                    envelope = self._handoff(
+                        envelope, action.reviewer, "PEER_REVIEW", action.claim, 0
+                    )
+                    emit("peer_review", action.reviewer, text)
+                    continue
+
+                if isinstance(action, Delegate):
+                    verdict = preflight(action.role, envelope.budget_snapshot(), self._ceiling)
+                    if not verdict.ok:
+                        outcome = self._engine_outcome(
+                            envelope,
+                            BlockingReason.SUPERVISOR_GUARDRAIL_VETO,
+                            verdict.detail,
+                        )
+                        envelope = self._handoff(
+                            envelope, action.role, verdict.code or "VETO", verdict.detail, 0
+                        )
+                        emit("veto", action.role, f"{verdict.code}: {verdict.detail}")
+                        metrics.record_veto(code=verdict.code or "UNKNOWN")
+                        metrics.record_decision(decision=outcome.decision.value)
+                        return SupervisorRun(envelope, outcome, tuple(events))
+
+                    attempt = envelope.visited(action.role)
+                    with start_span(
+                        "specialist.invoke",
+                        attrs={
+                            "specialist.role": action.role,
+                            "specialist.attempt": attempt,
+                        },
+                    ) as span:
+                        started = self._clock.monotonic()
+                        result = self._registry[action.role].run(envelope)
+                        duration = self._clock.monotonic() - started
+                        if not result.ok:
+                            set_status_error(span, result.error or "specialist failed")
+                    metrics.record_specialist(
+                        role=action.role, ok=result.ok, duration_s=duration
+                    )
+                    metrics.record_role_visit(role=action.role, attempt=attempt)
+                    envelope = envelope.with_result(result)
+                    envelope = self._handoff(
+                        envelope, action.role, "DELEGATE", action.reason, attempt
+                    )
+                    emit("delegate_result", action.role, result.summary or result.error or "ok")
+                    continue
+
+            outcome = self._engine_outcome(
+                envelope, BlockingReason.SUPERVISOR_GUARDRAIL_VETO, "max iterations exceeded"
+            )
+            metrics.record_decision(decision=outcome.decision.value)
+            return SupervisorRun(envelope, outcome, tuple(events))
 
     # --- helpers --------------------------------------------------------------
     def _handoff(

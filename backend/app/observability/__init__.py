@@ -8,7 +8,7 @@ no-op rather than raising at import time.
 """
 from __future__ import annotations
 
-from . import metrics
+from . import metrics, tracing
 from .config import configure_observability, is_enabled
 from .correlation import (
     REQUEST_ID_HEADER,
@@ -43,4 +43,5 @@ __all__ = [
     "register_exception_handlers",
     "request_id",
     "traceparent",
+    "tracing",
 ]

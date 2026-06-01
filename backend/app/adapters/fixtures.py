@@ -126,9 +126,15 @@ class FixedClock:
 
     def __init__(self, value: str = "2026-05-29T00:00:00Z") -> None:
         self._value = value
+        self._tick = 0.0
 
     def now_iso(self) -> str:
         return self._value
+
+    def monotonic(self) -> float:
+        # Strictly increasing, fully deterministic — each call advances by exactly 1 ms.
+        self._tick += 0.001
+        return self._tick
 
 
 class SeqIdGen:

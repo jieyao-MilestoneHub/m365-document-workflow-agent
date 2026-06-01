@@ -99,30 +99,10 @@ def test_metrics_facade_safe_without_opentelemetry(monkeypatch):
     metrics.record_decision(decision="pass")
 
 
-def test_metrics_facade_records_via_opentelemetry_when_present():
-    pytest.importorskip("opentelemetry")
-    from opentelemetry import metrics as otel_metrics
-    from opentelemetry.sdk.metrics import MeterProvider
-    from opentelemetry.sdk.metrics.export import InMemoryMetricReader
-
-    reader = InMemoryMetricReader()
-    provider = MeterProvider(metric_readers=[reader])
-    otel_metrics.set_meter_provider(provider)
-    metrics.reset_instruments()
-
-    metrics.record_specialist(role="po_grn_matcher", ok=True, duration_s=0.4)
-    metrics.record_decision(decision="hold")
-
-    data = reader.get_metrics_data()
-    names = {
-        m.name
-        for rm in data.resource_metrics
-        for sm in rm.scope_metrics
-        for m in sm.metrics
-    }
-    assert metrics.TOOL_CALLS in names
-    assert metrics.SPECIALIST_LATENCY in names
-    assert metrics.DECISION in names
+# NOTE: the "facade routes through OpenTelemetry when present" assertion now lives in
+# tests/test_supervisor_telemetry.py, which exercises the entire pipeline end-to-end
+# against the shared in-memory provider installed by conftest.otel_in_memory_providers.
+# Duplicating that wiring here would race the one-shot global provider install.
 
 
 def test_configure_attaches_redacting_filter_when_redactkit_present(monkeypatch):

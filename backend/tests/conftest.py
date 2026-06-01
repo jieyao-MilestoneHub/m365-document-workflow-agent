@@ -19,6 +19,57 @@ from app.schemas.posting import PostingDraft, PostingLine
 
 
 @pytest.fixture(scope="session")
+def otel_in_memory_providers():
+    """Install in-memory OTel tracer + meter providers exactly once per test session.
+
+    OpenTelemetry's global ``set_tracer_provider`` / ``set_meter_provider`` are one-shot,
+    so all tests that want to inspect spans or metrics must share a single provider pair.
+    Tests use the per-test ``otel_recording`` fixture below to clear buffers between runs.
+
+    Yields ``None`` when opentelemetry is not installed — consumer tests should
+    ``pytest.importorskip("opentelemetry")`` at module level.
+    """
+    try:
+        from opentelemetry import metrics as otel_metrics
+        from opentelemetry import trace as otel_trace
+        from opentelemetry.sdk.metrics import MeterProvider
+        from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+            InMemorySpanExporter,
+        )
+    except ImportError:
+        yield None
+        return
+
+    from app.observability import metrics as obs_metrics
+
+    span_exporter = InMemorySpanExporter()
+    tracer_provider = TracerProvider()
+    tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+    otel_trace.set_tracer_provider(tracer_provider)
+
+    metric_reader = InMemoryMetricReader()
+    meter_provider = MeterProvider(metric_readers=[metric_reader])
+    otel_metrics.set_meter_provider(meter_provider)
+
+    obs_metrics.reset_instruments()
+    yield span_exporter, metric_reader
+
+
+@pytest.fixture
+def otel_recording(otel_in_memory_providers):
+    """Per-test: clear span exporter and drain pending metrics from prior tests."""
+    if otel_in_memory_providers is None:
+        pytest.skip("opentelemetry not installed")
+    span_exporter, metric_reader = otel_in_memory_providers
+    span_exporter.clear()
+    metric_reader.get_metrics_data()
+    yield span_exporter, metric_reader
+
+
+@pytest.fixture(scope="session")
 def sample_data_dir() -> Path:
     """The synthetic-data directory, resolved by the runner (folder-move resilient).
 
