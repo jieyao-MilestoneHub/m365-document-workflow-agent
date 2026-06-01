@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from app.schemas.enums import LineStatus, Severity
+from app.schemas.enums import LineStatus
 from app.schemas.match import ThreeWayMatchReport
 from app.schemas.variance import LineVariance, VarianceReport
 

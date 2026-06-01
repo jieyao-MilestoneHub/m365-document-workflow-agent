@@ -14,7 +14,6 @@ from app.schemas.enums import Severity
 from .actions import Delegate, Escalate, Finalize, PeerReview, RequestInput, SupervisorAction
 from .envelope import MultiAgentEnvelope
 from .roles import (
-    EXCEPTION_REVIEWER,
     INVOICE_EXTRACTOR,
     PIPELINE_ORDER,
     PO_GRN_MATCHER,
