@@ -5,9 +5,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 A hackathon entry for **Microsoft Agents League AISF 2026** (Enterprise Agents / M365
-Copilot track). ONE feature, built deep: an **agentic AP Invoice Three-Way Match** agent
-(Invoice ↔ PO ↔ GRN → variance → exception → GL posting draft) surfaced in Microsoft 365
-Copilot, grounded by **Foundry IQ**.
+Copilot track). ONE feature, built deep: an agentic **Retail Supplier Deduction Control
+Agent** surfaced in Microsoft 365 Copilot, grounded by **Foundry IQ**.
+
+It runs a full three-way match (Invoice ↔ PO ↔ GRN → variance → exception → GL posting draft),
+but its differentiating job is the retail margin-protection layer a textbook three-way match
+misses: **promotion-allowance / margin-leakage detection** (deep), **short-receipt partial
+deductions** and **deduction cases with supplier-facing explanations** (medium), and **UOM
+false-mismatch normalization** (light). The money shot: an invoice that *passes* three-way
+match but is missing a promotion allowance the retailer is owed → HOLD before payment, routed
+to the Category Manager, with a Foundry IQ citation to the promotion agreement. Frame it as
+*"standard three-way match would pass this; our retail promotion control catches the missing
+allowance before payment"* — never as "the ERP can't do this."
 
 The full design, build sequence, and rationale live in the approved plan:
 `~/.claude/plans/rule-workflow-agent-convilyn-enterprise-bubbly-taco.md`. Read it first.
@@ -48,10 +57,13 @@ that way so logic is testable offline. Cloud calls are isolated behind `app/iq/`
 Two deployables + an M365 agent package (monorepo):
 
 - **`backend/`** — FastAPI + **Microsoft Agent Framework** (`agent-framework`). A **Magentic
-  supervisor** dynamically routes to 5 specialists (`invoice_extractor` → `po_grn_matcher` →
-  `variance_assessor` → `posting_preparer` → `exception_reviewer`). Each turn the supervisor
-  emits ONE action: delegate / peer-review / escalate / finalize. State flows through a shared
-  envelope (append-only handoff history, per-role results, exception ledger, budget).
+  supervisor** dynamically routes to 6 specialists (`invoice_extractor` → `po_grn_matcher` →
+  `promotion_auditor` → `variance_assessor` → `posting_preparer` → `exception_reviewer`). Each
+  turn the supervisor emits ONE action: delegate / peer-review / escalate / finalize. State flows
+  through a shared envelope (append-only handoff history, per-role results, exception ledger,
+  budget). `promotion_auditor` reconciles each invoice against its trade-promotion agreements
+  (from the `KnowledgePort`) and emits an `AllowanceAudit` (expected vs applied allowance →
+  margin leakage); like every specialist it produces a payload, never a verdict.
 - **`m365-agent/`** — M365 Agents SDK custom-engine-agent proxy that exposes the backend as a
   real Copilot/Teams agent (the hard "M365 Copilot integration" requirement).
 - **`frontend/`** — Next.js console (approver inbox, three-way canvas, variance evidence, GL
@@ -78,10 +90,20 @@ auto-posts; it holds/escalates to a human.
 ### Core workflow rules (encoded in the matcher/reviewer)
 
 - Tolerance: `within = abs(qty_delta) ≤ 0.5 AND abs(price_delta) ≤ max(0.5, po_unit_price×0.02)`.
+  Both qty and price are normalized to the PO base UOM first (qty `× uom_factor`, price
+  `÷ uom_factor`), so a pack-size difference with a conversion factor matches cleanly; a UOM
+  difference with **no** factor is a `uom_mismatch` → escalate.
+- Promotion allowance: `expected = Σ(billed qty for the promo SKU) × allowance_per_unit`;
+  `applied = Σ invoice.allowances for that promo`; `leakage = max(0, expected − applied)`. Leakage
+  above `policy.allowance_tolerance` → `PROMOTION_ALLOWANCE_MISSING` (HOLD, route category manager).
 - Posting: AP credit (acct 2100) = invoice total; per-line expense debits (gl_map → fallback
   5000); tax debit (1360). Invariant: Σdebit == Σcredit.
+- Deductions: disputable findings (promotion leakage, over-billed/short-receipt) become a
+  `DeductionCase` (amount, `evidence_refs`, supplier-facing explanation, route). The outcome
+  carries a **pay-now / hold split**: `held = Σ deduction amounts`, `payable = total − held`.
 - Decision: missing upstream/quality-fail → escalate; high severity → escalate; missing PO/GRN
-  → hold; medium out-of-tolerance → hold; unbalanced → escalate; else pass.
+  → hold; medium out-of-tolerance → hold; promotion leakage → hold; unbalanced → escalate;
+  else pass.
 
 ## Microsoft stack
 
@@ -91,6 +113,11 @@ reasoning LLM. Keep all intelligence on the Microsoft stack (maximizes IQ scorin
 
 ## Verification
 
-Two synthetic invoices are the canonical end-to-end check: **INV-1043** (clean) → `pass` with a
-balanced posting; **INV-1042** (one line +6% over PO price) → `hold (VARIANCE_OUTSIDE_TOLERANCE)`
-with the offending line and a Foundry IQ citation. All `sample-data/` must stay synthetic.
+The canonical end-to-end checks are the retail scenarios (`sample-data/expected_results.json`,
+driven by `tests/test_scenarios.py`). The money shot: **INV-1003** matches its PO/GRN exactly yet
+`hold (PROMOTION_ALLOWANCE_MISSING)` with **$25,200** margin leakage, a deduction case routed to
+the category manager, and a Foundry IQ citation to the promotion agreement. Also canonical:
+**INV-1001** (clean) → `pass`; **INV-1002** (short receipt) → `hold (OVER_BILLED_VS_RECEIPT)` with
+a pay-now/hold split; **INV-1004** (UOM normalized) → `pass`; **INV-1005** (UOM, no factor) →
+`escalate (UOM_MISMATCH)`. Legacy AP invoices (INV-1042 … INV-1060) are retained as regression
+coverage but are not part of the demo. All `sample-data/` must stay synthetic.

@@ -25,13 +25,13 @@ These gate the live Foundry IQ / Copilot demo (P4); the offline product ships wi
 - [ ] **Git-history review** — no proprietary or internal-project references in any commit.
 - [ ] **`sample-data/` is synthetic** — no real vendors, customers, or PII.
 - [ ] **Dependency audit** — `npm audit` (frontend); review backend extras.
-- [ ] **Backend green** — `cd backend && pytest` → 86 passing.
+- [ ] **Backend green** — `cd backend && pytest` → full suite passing (retail + legacy regression).
 
 ## Judging-pillar map (where each is shown)
 
 | Pillar | Evidence |
 |--------|----------|
-| Reliability & Safety | Deterministic guardrails + decision matrix; a variance never auto-posts (INV-1042/1054). |
-| Microsoft IQ (Foundry IQ) | Cited PO/GRN/policy retrieval via `KnowledgePort` — fixture today, Foundry IQ adapter gated. |
-| M365 Copilot integration | Backend exposed as a custom-engine agent via the M365 Agents SDK; slot-fill as an Adaptive Card (gated). |
-| Agentic design | Magentic supervisor, one action per turn over 5 specialists, live in the SSE trace. |
+| Reliability & Safety | Deterministic guardrails + decision matrix + allowance reconciliation + pay-now/hold split; a margin leakage never auto-posts (INV-1003), a short receipt holds only the disputed amount (INV-1002). |
+| Microsoft IQ (Foundry IQ) | Cited PO / GRN / **promotion-agreement** retrieval via `KnowledgePort` — fixture today, Foundry IQ adapter gated; the PROMO-MAY-BEV citation under INV-1003 is the seam. |
+| M365 Copilot integration | Backend exposed as a custom-engine agent via the M365 Agents SDK; the triage + follow-up investigation is the Copilot conversation; slot-fill as an Adaptive Card (gated). |
+| Agentic design | Magentic supervisor, one action per turn over 6 specialists (incl. `promotion_auditor`), live in the SSE trace. |

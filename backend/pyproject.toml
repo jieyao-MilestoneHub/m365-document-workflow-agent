@@ -1,7 +1,7 @@
 [project]
 name = "ap-three-way-match"
 version = "0.1.0"
-description = "Agentic AP Invoice Three-Way Match agent for Microsoft 365 Copilot (Agents League AISF 2026)"
+description = "Retail Supplier Deduction Control Agent for Microsoft 365 Copilot (Agents League AISF 2026)"
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.6",

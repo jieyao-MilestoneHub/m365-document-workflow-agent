@@ -1,23 +1,24 @@
 # Architecture
 
-AP Invoice Three-Way Match Agent — *let AI participate in the finance process, but never let AI
-break financial controls.*
+Retail Supplier Deduction Control Agent — *prevent retail margin leakage and supplier deduction
+disputes before payment; never let AI override a financial control.*
 
 This document is the hackathon's architecture-diagram deliverable. Components that require
 Azure/M365 provisioning are marked **gated** — designed and ports-isolated, but not yet wired (see
 [`ROADMAP.md`](ROADMAP.md)).
 
-![AP Invoice Three-Way Match — architecture](architecture.svg)
+![Retail Supplier Deduction Control Agent — architecture](architecture.svg)
 
 > The diagram is a self-contained SVG ([`architecture.svg`](architecture.svg)) and renders inline on
 > GitHub. Edit the SVG to update it.
 
 ## Walk-through
 
-**Surface (gated).** In the target state an approver asks *"Process invoice INV-1042"* inside
-**M365 Copilot or Teams**; an **M365 Agents-SDK** proxy calls the backend and renders results —
-including slot-fill prompts — as Adaptive Cards. Today the same backend is driven by the CLI, the
-tests, and the Next.js console.
+**Surface (gated).** In the target state an approver asks *"Review the May retail supplier
+invoices"* inside **M365 Copilot or Teams**, then follows up ("INV-1003 passed three-way match —
+why hold it?", "show me the evidence"); an **M365 Agents-SDK** proxy calls the backend and renders
+results — including slot-fill prompts and deduction cases — as Adaptive Cards. Today the same
+backend is driven by the CLI (`python -m app.cli triage`), the tests, and the Next.js console.
 
 **API (built).** A **FastAPI** service exposes the offline runner: list scenarios, create and fetch
 jobs, record a human decision, and — the centerpiece — a **Server-Sent Events** stream emitting one
@@ -25,13 +26,20 @@ jobs, record a human decision, and — the centerpiece — a **Server-Sent Event
 whether the run is instant offline replay or later pushed live behind Azure latency, so the frontend
 never changes.
 
-**Orchestrator core (built, offline, 86 tests).** A **Magentic-style supervisor** asks a brain for
+**Orchestrator core (built, offline, tested).** A **Magentic-style supervisor** asks a brain for
 the next action and emits one move per turn from a closed set —
-`delegate` / `peer-review` / `request-input` / `escalate` / `finalize` — routing over **5
+`delegate` / `peer-review` / `request-input` / `escalate` / `finalize` — routing over **6
 specialists** in dependency order
-(`invoice_extractor → po_grn_matcher → variance_assessor → posting_preparer → exception_reviewer`).
-State threads through an append-only **envelope** (handoff history, per-role results, exception
-ledger, budget).
+(`invoice_extractor → po_grn_matcher → promotion_auditor → variance_assessor → posting_preparer →
+exception_reviewer`). State threads through an append-only **envelope** (handoff history, per-role
+results, exception ledger, budget).
+
+**Retail deduction control layer.** `promotion_auditor` reconciles each invoice against its
+trade-promotion agreements and emits an `AllowanceAudit` (expected vs applied allowance → margin
+leakage). The deterministic decision matrix turns leakage and short-receipt over-billing into
+**deduction cases** (disputed amount, `evidence_refs`, a supplier-facing explanation, a routing
+target) and a **pay-now / hold split** on the outcome — so a clean-matching invoice that is
+missing a promotion allowance still holds before payment.
 
 **Guardrails are authoritative over the LLM.** A pre-flight before every delegation enforces a
 tool-call budget (25), a per-role visit cap (3), and **cycle detection**; any veto routes to a
@@ -41,9 +49,9 @@ invariants (money as `Decimal`, posting balanced to the cent, tolerance bounds),
 silently auto-posts.
 
 **Ports & adapters (Dependency Inversion).** Specialists and the supervisor depend only on narrow
-**port protocols** — `ExtractorPort`, `KnowledgePort`, `LedgerPort`, `ReasoningPort`,
-`HumanInputPort` (plus injected `Clock`/`IdGen`). This seam lets the project ship a complete,
-demoable offline product independent of cloud provisioning.
+**port protocols** — `ExtractorPort`, `KnowledgePort` (POs, GRNs, **promotion agreements**),
+`LedgerPort`, `ReasoningPort`, `HumanInputPort` (plus injected `Clock`/`IdGen`). This seam lets the
+project ship a complete, demoable offline product independent of cloud provisioning.
 
 **Adapters: built vs. gated.** Today the ports are satisfied by **fixture adapters** over synthetic
 JSON in `sample-data/` — first-class implementations that run the full pipeline and pin the data

@@ -1,14 +1,16 @@
-# Roadmap — AP Three-Way Match Agent
+# Roadmap — Retail Supplier Deduction Control Agent
 
 A living plan for the **Agents League AISF 2026** entry (Enterprise Agents / Microsoft 365
 Copilot track). The build is decomposed into **workstreams** (parallel tracks) and **phases**
 (sequential maturity gates) so each phase can be planned in detail on its own. Update this doc
 as phases close.
 
-**Product, in one line:** *Let AI participate in the finance process, but never let AI break
-financial controls.* A Copilot-native, multi-agent, evidence-grounded, human-in-the-loop AP
-invoice three-way-match agent whose arithmetic, tolerance, and posting decisions are made by
-deterministic code the LLM cannot override.
+**Product, in one line:** *A deterministic-control agent that prevents retail margin leakage and
+supplier deduction disputes before payment.* A Copilot-native, multi-agent, evidence-grounded,
+human-in-the-loop agent over a three-way-match core, whose arithmetic, tolerance, allowance, and
+posting decisions are made by deterministic code the LLM cannot override. The differentiator is
+**promotion-allowance / margin-leakage detection** — catching invoices that pass three-way match
+but are missing a commercial allowance — plus short-receipt deduction cases and UOM normalization.
 
 **Status legend:** ✅ done · 🔵 in progress · ⛔ blocked / gated · ⬜ planned
 
@@ -18,7 +20,7 @@ deterministic code the LLM cannot override.
 
 | WS | Name | Scope | Owner-ish |
 |----|------|-------|-----------|
-| **WS1** | Agent Core | Domain schemas, deterministic matching/validators/guardrails/decision, Magentic supervisor + 5 specialists, exception depth, scenario corpus | backend |
+| **WS1** | Agent Core | Domain schemas, deterministic matching/validators/guardrails/decision, Magentic supervisor + 6 specialists (incl. `promotion_auditor`), retail deduction control (allowance/leakage, deduction cases, partial hold, UOM normalization), exception depth, scenario corpus | backend |
 | **WS2** | API & Realtime | FastAPI endpoints + SSE reasoning-trace stream over the runner | backend |
 | **WS3** | Frontend Console | Next.js approver console — inbox, 3-way canvas, variance, GL preview, audit, policy, live reasoning trace | frontend |
 | **WS4** | Microsoft Integration | Azure adapters (Document Intelligence, **Foundry IQ**, Azure OpenAI) behind the ports + M365 Copilot/Teams surface (Agents SDK proxy) | backend + cloud |
@@ -52,6 +54,16 @@ Goal: credible exception handling + a consumable surface.
 - WS1: currency/duplicate/tax, line-level over-bill, SKU alias, slot-fill HITL, 11-scenario catalog.
 - WS2: FastAPI endpoints + SSE reasoning-trace stream.
 - **Exit met:** 86 tests green; API serves scenarios/jobs/stream/decision offline.
+
+### P2.5 — Retail Deduction Control 🔵 (cloud-free; the differentiator)
+Goal: the retail margin-protection layer that sets the entry apart from generic AP matching.
+- WS1: `promotion_auditor` specialist + `KnowledgePort.get_promotions`; promotion-allowance /
+  margin-leakage detection; short-receipt **deduction cases** with supplier-facing explanations
+  and a pay-now / hold split; UOM false-mismatch normalization (factor present → PASS, missing →
+  escalate); retail scenario corpus + `expected_results.json`; `triage` CLI investigation flow.
+- WS7: rebrand to **Retail Supplier Deduction Control Agent** (README, demo script, this roadmap).
+- **Exit:** `python -m app.cli triage` splits the batch; INV-1003 holds with a $25,200 leakage
+  deduction case + promotion citation; full test suite green.
 
 ### P3 — Frontend Console 🔵 (in progress; cloud-free)
 Goal: the commercial-grade approver console + the visible reasoning trace.
