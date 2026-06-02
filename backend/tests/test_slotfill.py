@@ -12,11 +12,13 @@ from app.orchestrator.roles import (
     INVOICE_EXTRACTOR,
     PO_GRN_MATCHER,
     POSTING_PREPARER,
+    PROMOTION_AUDITOR,
     VARIANCE_ASSESSOR,
 )
 from app.orchestrator.specialists.exception_reviewer import ExceptionReviewer
 from app.orchestrator.specialists.po_grn_matcher import PoGrnMatcher
 from app.orchestrator.specialists.posting_preparer import PostingPreparer
+from app.orchestrator.specialists.promotion_auditor import PromotionAuditor
 from app.orchestrator.specialists.variance_assessor import VarianceAssessor
 from app.orchestrator.supervisor import Supervisor
 from app.schemas.enums import BlockingReason, Decision
@@ -45,6 +47,9 @@ class _FixedKnowledge:
     def get_invoiced_to_date(self, *, po_ref):
         return {}
 
+    def get_promotions(self, *, vendor_name, po_ref, invoice_date):
+        return [], []
+
 
 class _MissingPoExtractor:
     role = INVOICE_EXTRACTOR
@@ -71,6 +76,7 @@ def _supervisor(human):
     registry = {
         INVOICE_EXTRACTOR: _MissingPoExtractor(_missing_po_invoice()),
         PO_GRN_MATCHER: PoGrnMatcher(_FixedKnowledge()),
+        PROMOTION_AUDITOR: PromotionAuditor(_FixedKnowledge()),
         VARIANCE_ASSESSOR: VarianceAssessor(),
         POSTING_PREPARER: PostingPreparer(),
         EXCEPTION_REVIEWER: ExceptionReviewer(ScriptedReasoner()),

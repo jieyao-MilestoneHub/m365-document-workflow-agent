@@ -6,9 +6,13 @@ Azure adapters must later reproduce.
 """
 from __future__ import annotations
 
+import json
+from decimal import Decimal
+from pathlib import Path
+
 import pytest
 
-from app.runner import run
+from app.runner import DEFAULT_DATA_DIR, run
 from app.schemas.enums import BlockingReason, Decision
 
 PASS, HOLD, ESCALATE = Decision.PASS, Decision.HOLD, Decision.ESCALATE
@@ -46,3 +50,37 @@ def test_scenario(invoice_id, decision, reason):
 def test_pass_scenario_has_no_blocking_reasons(invoice_id):
     # a clean invoice must carry an empty ledger — not merely a PASS verdict
     assert run(invoice_id).outcome.blocking_reasons == []
+
+
+# --- Retail deduction-control scenarios, driven by the expected_results contract -------------
+def _retail_expected() -> dict:
+    path = Path(DEFAULT_DATA_DIR) / "expected_results.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {k: v for k, v in data.items() if not k.startswith("_")}
+
+
+RETAIL_EXPECTED = _retail_expected()
+
+
+@pytest.mark.parametrize("invoice_id", list(RETAIL_EXPECTED))
+def test_retail_scenario(invoice_id):
+    exp = RETAIL_EXPECTED[invoice_id]
+    outcome = run(invoice_id).outcome
+
+    assert outcome.decision.value == exp["decision"]
+    actual_reasons = {r.value for r in outcome.blocking_reasons}
+    for reason in exp["blocking_reasons"]:
+        assert reason in actual_reasons, f"{invoice_id}: expected blocking reason {reason}"
+
+    assert outcome.payable_amount == Decimal(exp["payable_amount"])
+    assert outcome.held_amount == Decimal(exp["held_amount"])
+
+    types = sorted(c.deduction_type.value for c in outcome.deduction_cases)
+    assert types == sorted(exp["deduction_case_types"])
+
+    leakage = sum(
+        (c.amount for c in outcome.deduction_cases
+         if c.deduction_type.value == "PROMOTION_ALLOWANCE_MISSING"),
+        Decimal("0"),
+    )
+    assert leakage == Decimal(exp["margin_leakage"])

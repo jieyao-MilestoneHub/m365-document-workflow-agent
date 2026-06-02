@@ -46,8 +46,8 @@ def test_run_emits_finalize_event():
 
 def test_audit_trail_is_populated():
     result = run("INV-1043")
-    # clean path: extractor → matcher → variance → posting → reviewer → finalize (deterministic)
-    assert len(result.envelope.handoff_history) == 6
+    # clean path: extractor → matcher → promotion_auditor → variance → posting → reviewer → finalize
+    assert len(result.envelope.handoff_history) == 7
 
 
 class _FailingExtractor:

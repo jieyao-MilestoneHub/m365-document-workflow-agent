@@ -63,12 +63,13 @@ def test_specialist_invocations_are_child_spans(otel_recording):
     parent = next(s for s in spans if s.name == "invoke_supervisor")
     children = [s for s in spans if s.name == "specialist.invoke"]
 
-    # Five specialists in the clean-path pipeline, each invoked exactly once.
-    assert len(children) == 5
+    # Six specialists in the clean-path pipeline, each invoked exactly once.
+    assert len(children) == 6
     roles = {s.attributes["specialist.role"] for s in children}
     assert roles == {
         "invoice_extractor",
         "po_grn_matcher",
+        "promotion_auditor",
         "variance_assessor",
         "posting_preparer",
         "exception_reviewer",

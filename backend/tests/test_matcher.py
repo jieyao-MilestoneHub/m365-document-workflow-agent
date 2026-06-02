@@ -149,15 +149,16 @@ def test_uom_mismatch_flagged_without_conversion():
 def test_uom_reconciled_with_conversion_factor():
     # a conversion factor bridges the differing units → not a mismatch
     matcher = PoGrnMatcher(_FakeKnowledge(_PO_EA, _FULL_GRN))
-    # 1 case × factor 10 = 10 ea, matching the received quantity
+    # 1 case × factor 10 = 10 ea, matching the received quantity; the case is priced at 10× the
+    # per-ea PO price ($950 = 10 × $95), so the UOM-normalized unit price ($95/ea) matches too.
     line_item = InvoiceLineItem(
         line_no=1, sku="WIDGET-A", description="Widget A", quantity=Decimal("1"),
-        unit_price=Decimal("95.00"), line_total=Decimal("95.00"),
+        unit_price=Decimal("950.00"), line_total=Decimal("950.00"),
         unit_of_measure="case", uom_factor=Decimal("10"),
     )
     invoice = VendorInvoice(
         vendor_name="Globex", invoice_number="INV-U", invoice_date=date(2026, 5, 20),
-        currency="USD", subtotal=Decimal("95.00"), tax_total=Decimal("0"), total=Decimal("95.00"),
+        currency="USD", subtotal=Decimal("950.00"), tax_total=Decimal("0"), total=Decimal("950.00"),
         po_ref="PO-5000", grn_ref="GRN-7000", line_items=[line_item],
     )
     line = matcher.run(_envelope(invoice)).payload.lines[0]
