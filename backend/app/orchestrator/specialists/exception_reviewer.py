@@ -14,6 +14,7 @@ from ..roles import (
     INVOICE_EXTRACTOR,
     PO_GRN_MATCHER,
     POSTING_PREPARER,
+    PROMOTION_AUDITOR,
     VARIANCE_ASSESSOR,
 )
 
@@ -43,6 +44,7 @@ class ExceptionReviewer:
             posting=envelope.payload_for(POSTING_PREPARER),
             policy=envelope.policy,
             is_duplicate=is_duplicate,
+            allowance_audit=envelope.payload_for(PROMOTION_AUDITOR),
         )
         if self._reasoning is not None:
             narrated = self._reasoning.narrate(

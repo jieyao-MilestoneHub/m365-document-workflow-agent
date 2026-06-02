@@ -26,12 +26,14 @@ from app.orchestrator.roles import (
     INVOICE_EXTRACTOR,
     PO_GRN_MATCHER,
     POSTING_PREPARER,
+    PROMOTION_AUDITOR,
     VARIANCE_ASSESSOR,
 )
 from app.orchestrator.specialists.exception_reviewer import ExceptionReviewer
 from app.orchestrator.specialists.invoice_extractor import InvoiceExtractor
 from app.orchestrator.specialists.po_grn_matcher import PoGrnMatcher
 from app.orchestrator.specialists.posting_preparer import PostingPreparer
+from app.orchestrator.specialists.promotion_auditor import PromotionAuditor
 from app.orchestrator.specialists.variance_assessor import VarianceAssessor
 from app.orchestrator.supervisor import Supervisor, SupervisorRun, TraceEvent
 
@@ -72,6 +74,7 @@ def default_registry(base_dir: str | Path) -> tuple[dict, FixtureKnowledge]:
     registry = {
         INVOICE_EXTRACTOR: InvoiceExtractor(extractor),
         PO_GRN_MATCHER: PoGrnMatcher(knowledge),
+        PROMOTION_AUDITOR: PromotionAuditor(knowledge),
         VARIANCE_ASSESSOR: VarianceAssessor(),
         POSTING_PREPARER: PostingPreparer(),
         EXCEPTION_REVIEWER: ExceptionReviewer(reasoning, ledger),

@@ -8,6 +8,7 @@ from __future__ import annotations
 SUPERVISOR = "supervisor"
 INVOICE_EXTRACTOR = "invoice_extractor"
 PO_GRN_MATCHER = "po_grn_matcher"
+PROMOTION_AUDITOR = "promotion_auditor"
 VARIANCE_ASSESSOR = "variance_assessor"
 POSTING_PREPARER = "posting_preparer"
 EXCEPTION_REVIEWER = "exception_reviewer"
@@ -16,6 +17,7 @@ EXCEPTION_REVIEWER = "exception_reviewer"
 PIPELINE_ORDER: tuple[str, ...] = (
     INVOICE_EXTRACTOR,
     PO_GRN_MATCHER,
+    PROMOTION_AUDITOR,
     VARIANCE_ASSESSOR,
     POSTING_PREPARER,
     EXCEPTION_REVIEWER,

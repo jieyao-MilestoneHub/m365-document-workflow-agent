@@ -6,12 +6,14 @@ Azure implementation (prod) under ``app/adapters`` — fully substitutable (Lisk
 """
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from typing import Protocol, runtime_checkable
 
 from app.schemas.citation import Citation
 from app.schemas.invoice import VendorInvoice
 from app.schemas.policy import PolicyBundle
+from app.schemas.promotion import Promotion
 from app.schemas.reference import GoodsReceiptNote, PurchaseOrder
 
 
@@ -38,6 +40,16 @@ class KnowledgePort(Protocol):
 
     def get_invoiced_to_date(self, *, po_ref: str | None) -> dict[str, Decimal]:
         """Quantity already invoiced per line key (sku or description) against this PO."""
+        ...
+
+    def get_promotions(
+        self, *, vendor_name: str, po_ref: str | None, invoice_date: date
+    ) -> tuple[list[Promotion], list[Citation]]:
+        """Trade-promotion agreements in effect for this vendor on the invoice date.
+
+        Returns the applicable promotions plus a citation per promotion (the agreement is the
+        grounded evidence behind a missing-allowance deduction).
+        """
         ...
 
 

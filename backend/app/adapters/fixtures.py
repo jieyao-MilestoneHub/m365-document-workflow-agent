@@ -7,12 +7,14 @@ produce.
 from __future__ import annotations
 
 import json
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
 from app.schemas.citation import Citation
 from app.schemas.invoice import VendorInvoice
 from app.schemas.policy import PolicyBundle
+from app.schemas.promotion import Promotion
 from app.schemas.reference import GoodsReceiptNote, PurchaseOrder
 
 
@@ -68,6 +70,25 @@ class FixtureKnowledge:
         data = json.loads(path.read_text(encoding="utf-8"))
         return {k: Decimal(str(v)) for k, v in data.get(po_ref, {}).items()}
 
+    def get_promotions(
+        self, *, vendor_name: str, po_ref: str | None, invoice_date: date
+    ) -> tuple[list[Promotion], list[Citation]]:
+        path = self._base / "promotions.json"
+        if not path.exists():
+            return [], []
+        data = json.loads(path.read_text(encoding="utf-8"))
+        promotions: list[Promotion] = []
+        citations: list[Citation] = []
+        for promo_id, raw in data.items():
+            if not isinstance(raw, dict):  # skip a leading "_comment" or similar
+                continue
+            promo = Promotion.model_validate(raw)
+            if promo.vendor_name != vendor_name or not promo.applies_on(invoice_date):
+                continue
+            promotions.append(promo)
+            citations.append(self._citation(promo_id, "Promotion Agreement", _promo_snippet(promo)))
+        return promotions, citations
+
     @staticmethod
     def _citation(doc_id: str, kind: str, snippet: str) -> Citation:
         return Citation(document_id=doc_id, document_title=f"{kind} {doc_id}", cited_text=snippet)
@@ -79,6 +100,14 @@ def _po_snippet(po: PurchaseOrder) -> str:
 
 def _grn_snippet(grn: GoodsReceiptNote) -> str:
     return "; ".join(f"{ln.sku or ln.description} received {ln.received_quantity}" for ln in grn.lines)
+
+
+def _promo_snippet(promo: Promotion) -> str:
+    sku = promo.sku or "all SKUs"
+    return (
+        f"{promo.allowance_per_unit} allowance per {promo.unit_of_measure or 'unit'} "
+        f"on {sku}, valid {promo.effective_from} to {promo.effective_to}"
+    )
 
 
 class FixtureLedger:

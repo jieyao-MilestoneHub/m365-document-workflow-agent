@@ -129,14 +129,28 @@ class PoGrnMatcher:
         # differs from the PO with no conversion factor cannot be reconciled — a silent unit
         # error is high-$, so flag it and force a non-matched status (decision.py escalates).
         uom_mismatch = not _uom_reconcilable(li, po_line)
-        qty_delta = (li.quantity * li.uom_factor) - grn_line.received_quantity
-        # Cross-currency price deltas are meaningless; the report-level currency_mismatch
-        # flag escalates instead, so suppress the per-line price comparison here.
-        price_delta = Decimal("0") if currency_mismatch else li.unit_price - po_line.unit_price
-        within = (not uom_mismatch) and evaluate_line_tolerance(
-            quantity_delta=qty_delta, price_delta=price_delta,
-            po_unit_price=po_line.unit_price, tolerance=tolerance,
-        )
+        if uom_mismatch:
+            # Units can't be reconciled without a conversion factor, so the quantity and price
+            # deltas are meaningless — reporting them would masquerade as a price/quantity
+            # variance on top of the real problem. Suppress them; the uom_mismatch flag alone
+            # drives the escalation (decision.py), mirroring the currency_mismatch handling.
+            qty_delta = Decimal("0")
+            price_delta = Decimal("0")
+            within = False
+        else:
+            qty_delta = (li.quantity * li.uom_factor) - grn_line.received_quantity
+            # Normalize price into the PO base UOM with the same factor used for quantity: if the
+            # invoice bills 1 case (= 24 each) at $18, that is $0.75/each — directly comparable to
+            # a PO priced per each. Without this, a legitimate pack-size difference looks like a
+            # price variance. (factor defaults to 1, so same-UOM lines are unaffected.)
+            unit_price_base = li.unit_price / li.uom_factor if li.uom_factor else li.unit_price
+            # Cross-currency price deltas are meaningless; the report-level currency_mismatch
+            # flag escalates instead, so suppress the per-line price comparison here.
+            price_delta = Decimal("0") if currency_mismatch else unit_price_base - po_line.unit_price
+            within = evaluate_line_tolerance(
+                quantity_delta=qty_delta, price_delta=price_delta,
+                po_unit_price=po_line.unit_price, tolerance=tolerance,
+            )
 
         # line-level billing position: bill no more than what's received-but-unbilled
         billed_before = (invoiced_to_date or {}).get(li.sku or li.description, Decimal("0"))

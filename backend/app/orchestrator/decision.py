@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from app.schemas.deduction import AllowanceAudit, DeductionCase, DeductionType
 from app.schemas.enums import (
     ESCALATE_REASONS,
     BlockingReason,
@@ -18,6 +19,7 @@ from app.schemas.enums import (
 )
 from app.schemas.invoice import VendorInvoice
 from app.schemas.match import ThreeWayMatchReport
+from app.schemas.money import to_money
 from app.schemas.outcome import ExceptionTicket, ValidationOutcome
 from app.schemas.policy import PolicyBundle
 from app.schemas.posting import PostingDraft
@@ -51,6 +53,7 @@ _RESOLUTIONS: dict[BlockingReason, str] = {
     BlockingReason.UNPLANNED_CHARGE: "Unplanned freight/misc charge above tolerance; confirm with procurement.",
     BlockingReason.UOM_MISMATCH: "Invoice unit of measure differs from the PO; confirm the conversion factor.",
     BlockingReason.SKU_ALIAS_UNRESOLVED: "Confirm the vendor-SKU to internal-SKU mapping.",
+    BlockingReason.PROMOTION_ALLOWANCE_MISSING: "Promotion allowance not applied; deduct the margin leakage and route to the category manager.",
 }
 
 
@@ -79,6 +82,7 @@ def evaluate_outcome(
     posting: PostingDraft | None,
     policy: PolicyBundle,
     is_duplicate: bool = False,
+    allowance_audit: AllowanceAudit | None = None,
 ) -> ValidationOutcome:
     """Compute the authoritative outcome from the upstream specialist payloads."""
     inv_no = invoice.invoice_number if invoice else (match.invoice_number if match else "UNKNOWN")
@@ -162,6 +166,24 @@ def evaluate_outcome(
                 _ticket(inv_no, BlockingReason.UOM_MISMATCH, Severity.HIGH, uom_lines)
             )
 
+    # --- Promotion allowance / margin leakage → hold --------------------------
+    # A clean three-way match can still leak margin if a promotion allowance the retailer is
+    # owed was never applied. Leakage above tolerance holds and routes to the category manager.
+    if allowance_audit is not None and allowance_audit.margin_leakage_total > policy.allowance_tolerance:
+        leaking = [ln for ln in allowance_audit.lines if ln.leakage > 0]
+        affected = sorted({n for ln in leaking for n in ln.affected_lines})
+        tickets.append(
+            _ticket(
+                inv_no, BlockingReason.PROMOTION_ALLOWANCE_MISSING, Severity.MEDIUM, affected,
+                evidence={
+                    "margin_leakage": str(to_money(allowance_audit.margin_leakage_total)),
+                    "promotions": [ln.promo_id for ln in leaking],
+                    "expected": str(to_money(sum((ln.expected_allowance for ln in leaking), Decimal("0")))),
+                    "applied": str(to_money(sum((ln.applied_allowance for ln in leaking), Decimal("0")))),
+                },
+            )
+        )
+
     # --- Posting / GL ----------------------------------------------------------
     if posting is not None:
         balance = check_posting_balance(posting)
@@ -193,10 +215,121 @@ def evaluate_outcome(
                         evidence={"missing_fields": invoice.missing_fields})
             )
 
-    return _assemble(inv_no, tickets)
+    deduction_cases = build_deduction_cases(invoice, match, allowance_audit, tickets)
+    held = sum((c.amount for c in deduction_cases), Decimal("0"))
+    payable: Decimal | None = None
+    held_out: Decimal | None = None
+    if invoice is not None:
+        held_out = to_money(held)
+        payable = to_money(invoice.total - held)
+    return _assemble(inv_no, tickets, deduction_cases, payable, held_out)
 
 
-def _assemble(invoice_number: str, tickets: list[ExceptionTicket]) -> ValidationOutcome:
+#: routing target per deduction type (where the disputable case should go)
+_DEDUCTION_ROUTE: dict[DeductionType, str] = {
+    DeductionType.PROMOTION_ALLOWANCE_MISSING: "category_manager",
+    DeductionType.SHORT_RECEIPT: "dc_receiving_supervisor",
+}
+
+
+def build_deduction_cases(
+    invoice: VendorInvoice | None,
+    match: ThreeWayMatchReport | None,
+    allowance_audit: AllowanceAudit | None,
+    tickets: list[ExceptionTicket],
+) -> list[DeductionCase]:
+    """Turn disputable findings into auditable, supplier-facing deduction packets.
+
+    Covers promotion-allowance leakage and short-receipt / over-billing. Each case carries the
+    disputed amount, evidence references, a generated supplier-facing explanation, and a route.
+    """
+    if invoice is None:
+        return []
+    reasons = {t.exception_type for t in tickets}
+    cases: list[DeductionCase] = []
+    po_ref = (match.po_number if match else None) or invoice.po_ref or "PO"
+    grn_ref = (match.grn_number if match else None) or invoice.grn_ref or "GRN"
+    inv_no = invoice.invoice_number
+
+    def _next_id() -> str:
+        return f"DED-{inv_no}-{len(cases) + 1}"
+
+    # Promotion allowance missing → one case per leaking promotion.
+    if BlockingReason.PROMOTION_ALLOWANCE_MISSING in reasons and allowance_audit is not None:
+        promos = {p.promo_id: p for p in allowance_audit.applicable_promotions}
+        for ln in allowance_audit.lines:
+            if ln.leakage <= 0:
+                continue
+            promo = promos.get(ln.promo_id)
+            unit = (promo.unit_of_measure if promo else None) or "unit"
+            window = f"{promo.effective_from}..{promo.effective_to}" if promo else "the agreement"
+            per_unit = promo.allowance_per_unit if promo else Decimal("0")
+            evidence = [f"{po_ref}#line-{n}" for n in ln.affected_lines]
+            evidence += [f"{grn_ref}#line-{n}" for n in ln.affected_lines]
+            evidence += [f"{inv_no}#line-{n}" for n in ln.affected_lines]
+            evidence.append(ln.promo_id)
+            explanation = (
+                f"Invoice {inv_no} billed {ln.billed_quantity} {unit} of {ln.sku or 'goods'} at "
+                f"full price with no allowance line. Promotion {ln.promo_id} grants a {per_unit} "
+                f"allowance per {unit} (valid {window}), so an allowance of "
+                f"{to_money(ln.expected_allowance)} was expected. Margin leakage: "
+                f"{to_money(ln.leakage)}."
+            )
+            cases.append(DeductionCase(
+                deduction_case_id=_next_id(), invoice_number=inv_no,
+                vendor_name=invoice.vendor_name,
+                deduction_type=DeductionType.PROMOTION_ALLOWANCE_MISSING,
+                amount=to_money(ln.leakage),
+                affected_lines=list(ln.affected_lines), evidence_refs=evidence,
+                supplier_explanation=explanation,
+                route_to=(promo.route_to if promo else _DEDUCTION_ROUTE[DeductionType.PROMOTION_ALLOWANCE_MISSING]),
+            ))
+
+    # Short receipt / over-billing → one case per over-billed line.
+    if BlockingReason.OVER_BILLED_VS_RECEIPT in reasons and match is not None:
+        by_line = {li.line_no: li for li in invoice.line_items}
+        for m in match.lines:
+            if not m.over_billed:
+                continue
+            li = by_line.get(m.invoice_line_no)
+            if li is None:
+                continue
+            billable = m.remaining_billable_quantity or Decimal("0")
+            short = li.quantity - billable
+            if short <= 0:
+                continue
+            amount = to_money(short * li.unit_price)
+            received = m.received_quantity if m.received_quantity is not None else billable
+            unit = li.unit_of_measure or "unit"
+            explanation = (
+                f"Invoice {inv_no} billed {li.quantity} {unit} of {li.sku or 'goods'}, but GRN "
+                f"{grn_ref} accepted only {received}. Disputed quantity: {short} {unit} at "
+                f"{to_money(li.unit_price)} = {amount}."
+            )
+            cases.append(DeductionCase(
+                deduction_case_id=_next_id(), invoice_number=inv_no,
+                vendor_name=invoice.vendor_name,
+                deduction_type=DeductionType.SHORT_RECEIPT, amount=amount,
+                affected_lines=[m.invoice_line_no],
+                evidence_refs=[
+                    f"{po_ref}#line-{m.invoice_line_no}", f"{grn_ref}#line-{m.invoice_line_no}",
+                    f"{inv_no}#line-{m.invoice_line_no}",
+                ],
+                supplier_explanation=explanation,
+                route_to=_DEDUCTION_ROUTE[DeductionType.SHORT_RECEIPT],
+            ))
+
+    return cases
+
+
+def _assemble(
+    invoice_number: str,
+    tickets: list[ExceptionTicket],
+    deduction_cases: list[DeductionCase] | None = None,
+    payable_amount: Decimal | None = None,
+    held_amount: Decimal | None = None,
+) -> ValidationOutcome:
+    deduction_cases = deduction_cases or []
     reasons = [t.exception_type for t in tickets]
     if not reasons:
         return ValidationOutcome(
@@ -204,6 +337,8 @@ def _assemble(invoice_number: str, tickets: list[ExceptionTicket]) -> Validation
             decision=Decision.PASS,
             confidence=0.97,
             summary="All checks passed; invoice is a clean three-way match and ready to post.",
+            payable_amount=payable_amount,
+            held_amount=held_amount,
         )
     escalate = any(r in ESCALATE_REASONS for r in reasons)
     decision = Decision.ESCALATE if escalate else Decision.HOLD
@@ -216,4 +351,7 @@ def _assemble(invoice_number: str, tickets: list[ExceptionTicket]) -> Validation
         summary=f"{decision.value.title()} - {reason_list}.",
         escalation_target="ap_manager" if escalate else "process_owner",
         exception_tickets=tickets,
+        deduction_cases=deduction_cases,
+        payable_amount=payable_amount,
+        held_amount=held_amount,
     )
