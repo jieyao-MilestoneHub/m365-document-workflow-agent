@@ -77,6 +77,8 @@ class PolicyBundle(BaseModel):
     vendors: VendorConfig = Field(default_factory=VendorConfig)
     #: total unplanned freight/misc charges above this hold for review (HOLD, not escalate)
     freight_tolerance: Decimal = Field(default=Decimal("25.00"), description="currency units")
+    #: margin leakage (expected − applied promotion allowance) above this holds for review
+    allowance_tolerance: Decimal = Field(default=Decimal("1.00"), description="currency units")
     valid_gl_accounts: frozenset[str] = Field(default_factory=frozenset)
     closed_periods: frozenset[str] = Field(default_factory=frozenset, description="YYYY-MM strings")
     #: vendor SKU -> internal SKU (so vendor item codes resolve to the catalogue)

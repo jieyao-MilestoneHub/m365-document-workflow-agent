@@ -4,10 +4,12 @@ Consistency rule: ``decision == pass`` iff ``blocking_reasons`` is empty.
 """
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from .deduction import DeductionCase
 from .enums import BlockingReason, Decision, Severity
 
 
@@ -35,6 +37,11 @@ class ValidationOutcome(BaseModel):
     summary: str = Field(max_length=2000)
     escalation_target: str | None = None
     exception_tickets: list[ExceptionTicket] = Field(default_factory=list)
+    #: retail deduction packets for disputable findings (promotion leakage, short receipt)
+    deduction_cases: list[DeductionCase] = Field(default_factory=list)
+    #: pay-now / hold split: held = Σ deduction amounts, payable = invoice total − held
+    payable_amount: Decimal | None = None
+    held_amount: Decimal | None = None
 
     @model_validator(mode="after")
     def _check_consistency(self) -> "ValidationOutcome":

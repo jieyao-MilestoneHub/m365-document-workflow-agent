@@ -1,7 +1,8 @@
 """Foundry IQ citation — a traceable pointer to a source document snippet.
 
-Every grounded claim (matched PO line, policy rule applied) should carry citations so the
-UI can show judges exactly what the agent relied on. ``cited_text`` is the exact snippet.
+Every grounded claim (matched PO line, policy rule applied, promotion agreement) should carry
+citations so the UI can show a reviewer exactly what the agent relied on. ``cited_text`` is the
+exact snippet.
 """
 from __future__ import annotations
 

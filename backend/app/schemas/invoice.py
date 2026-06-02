@@ -50,6 +50,23 @@ class InvoiceLineItem(BaseModel):
         return self
 
 
+class InvoiceAllowance(BaseModel):
+    """A promotion/trade allowance the supplier credited on this invoice.
+
+    Tracked separately from the line items (NOT folded into ``subtotal``/``total``) so the
+    arithmetic invariants stay clean and the *absence* of an allowance is provable: an invoice
+    that should carry an allowance but lists none has ``allowances == []``. The retail control
+    reconciles ``Σ amount`` here against the expected allowance from the promotion agreement.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    promo_id: str | None = None
+    sku: str | None = None
+    amount: Decimal = Field(ge=0, description="allowance credited (currency units)")
+    description: str | None = None
+
+
 class VendorInvoice(BaseModel):
     """Structured vendor invoice. Totals must reconcile to the line items."""
 
@@ -67,6 +84,8 @@ class VendorInvoice(BaseModel):
     po_ref: str | None = None
     grn_ref: str | None = None
     line_items: list[InvoiceLineItem] = Field(default_factory=list, max_length=2000)
+    #: promotion/trade allowances the supplier credited on this invoice (default: none applied)
+    allowances: list[InvoiceAllowance] = Field(default_factory=list)
     #: fields the extractor could not read with confidence (drives quality warnings)
     missing_fields: list[str] = Field(default_factory=list)
 
