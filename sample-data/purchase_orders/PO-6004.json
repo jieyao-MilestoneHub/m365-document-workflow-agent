@@ -1,0 +1,8 @@
+{
+  "po_number": "PO-6004",
+  "vendor_name": "Fabrikam Foods",
+  "currency": "USD",
+  "lines": [
+    { "sku": "JUICE-1L", "description": "Apple Juice 1L", "quantity": "2400", "unit_price": "0.75", "unit_of_measure": "each" }
+  ]
+}

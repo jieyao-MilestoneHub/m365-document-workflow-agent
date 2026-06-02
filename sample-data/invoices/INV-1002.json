@@ -1,0 +1,14 @@
+{
+  "vendor_name": "Northwind Beverages",
+  "invoice_number": "INV-1002",
+  "invoice_date": "2026-05-10",
+  "currency": "USD",
+  "subtotal": "3000.00",
+  "tax_total": "0",
+  "total": "3000.00",
+  "po_ref": "PO-6002",
+  "grn_ref": "GRN-8002",
+  "line_items": [
+    { "line_no": 1, "sku": "SPARKLING-330-CASE", "description": "Sparkling Water 330ml", "quantity": "500", "unit_price": "6.00", "line_total": "3000.00", "unit_of_measure": "case" }
+  ]
+}

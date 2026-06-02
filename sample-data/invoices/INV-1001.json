@@ -1,0 +1,14 @@
+{
+  "vendor_name": "Northwind Beverages",
+  "invoice_number": "INV-1001",
+  "invoice_date": "2026-05-10",
+  "currency": "USD",
+  "subtotal": "2400.00",
+  "tax_total": "0",
+  "total": "2400.00",
+  "po_ref": "PO-6001",
+  "grn_ref": "GRN-8001",
+  "line_items": [
+    { "line_no": 1, "sku": "WATER-12PK-CASE", "description": "Spring Water 12pk", "quantity": "300", "unit_price": "8.00", "line_total": "2400.00", "unit_of_measure": "case" }
+  ]
+}

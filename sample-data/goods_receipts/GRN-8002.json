@@ -1,0 +1,7 @@
+{
+  "grn_number": "GRN-8002",
+  "receipt_date": "2026-05-08",
+  "lines": [
+    { "sku": "SPARKLING-330-CASE", "description": "Sparkling Water 330ml", "received_quantity": "420" }
+  ]
+}

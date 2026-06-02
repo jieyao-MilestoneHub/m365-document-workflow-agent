@@ -1,0 +1,13 @@
+{
+  "PROMO-MAY-BEV": {
+    "promo_id": "PROMO-MAY-BEV",
+    "description": "May beverage trade allowance",
+    "vendor_name": "Northwind Beverages",
+    "sku": "OJ-1L-CASE",
+    "allowance_per_unit": "3.00",
+    "unit_of_measure": "case",
+    "effective_from": "2026-05-01",
+    "effective_to": "2026-05-15",
+    "route_to": "category_manager"
+  }
+}

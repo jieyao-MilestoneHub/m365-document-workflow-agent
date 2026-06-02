@@ -1,0 +1,8 @@
+{
+  "po_number": "PO-6003",
+  "vendor_name": "Northwind Beverages",
+  "currency": "USD",
+  "lines": [
+    { "sku": "OJ-1L-CASE", "description": "Orange Juice 1L", "quantity": "8400", "unit_price": "18.00", "unit_of_measure": "case" }
+  ]
+}

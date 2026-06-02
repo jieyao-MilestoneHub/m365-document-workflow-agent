@@ -1,0 +1,8 @@
+{
+  "po_number": "PO-6001",
+  "vendor_name": "Northwind Beverages",
+  "currency": "USD",
+  "lines": [
+    { "sku": "WATER-12PK-CASE", "description": "Spring Water 12pk", "quantity": "300", "unit_price": "8.00", "unit_of_measure": "case" }
+  ]
+}

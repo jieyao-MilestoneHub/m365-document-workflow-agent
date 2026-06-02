@@ -1,0 +1,7 @@
+{
+  "grn_number": "GRN-8006",
+  "receipt_date": "2026-05-08",
+  "lines": [
+    { "sku": "OJ-1L-CASE", "description": "Orange Juice 1L", "received_quantity": "8400" }
+  ]
+}

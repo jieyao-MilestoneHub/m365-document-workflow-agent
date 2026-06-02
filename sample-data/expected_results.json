@@ -1,0 +1,51 @@
+{
+  "_comment": "Per-invoice expected outcome for the retail deduction-control scenarios. Source of truth for tests/test_scenarios.py and the demo. Amounts are decimal strings (USD).",
+  "INV-1001": {
+    "decision": "pass",
+    "blocking_reasons": [],
+    "margin_leakage": "0",
+    "payable_amount": "2400.00",
+    "held_amount": "0",
+    "deduction_case_types": []
+  },
+  "INV-1002": {
+    "decision": "hold",
+    "blocking_reasons": ["OVER_BILLED_VS_RECEIPT", "VARIANCE_OUTSIDE_TOLERANCE"],
+    "margin_leakage": "0",
+    "payable_amount": "2520.00",
+    "held_amount": "480.00",
+    "deduction_case_types": ["SHORT_RECEIPT"]
+  },
+  "INV-1003": {
+    "decision": "hold",
+    "blocking_reasons": ["PROMOTION_ALLOWANCE_MISSING"],
+    "margin_leakage": "25200.00",
+    "payable_amount": "126000.00",
+    "held_amount": "25200.00",
+    "deduction_case_types": ["PROMOTION_ALLOWANCE_MISSING"]
+  },
+  "INV-1004": {
+    "decision": "pass",
+    "blocking_reasons": [],
+    "margin_leakage": "0",
+    "payable_amount": "1800.00",
+    "held_amount": "0",
+    "deduction_case_types": []
+  },
+  "INV-1005": {
+    "decision": "escalate",
+    "blocking_reasons": ["UOM_MISMATCH"],
+    "margin_leakage": "0",
+    "payable_amount": "1800.00",
+    "held_amount": "0",
+    "deduction_case_types": []
+  },
+  "INV-1006": {
+    "decision": "pass",
+    "blocking_reasons": [],
+    "margin_leakage": "0",
+    "payable_amount": "151200.00",
+    "held_amount": "0",
+    "deduction_case_types": []
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "grn_number": "GRN-8004",
+  "receipt_date": "2026-05-18",
+  "lines": [
+    { "sku": "JUICE-1L", "description": "Apple Juice 1L", "received_quantity": "2400" }
+  ]
+}

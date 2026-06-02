@@ -1,0 +1,14 @@
+{
+  "vendor_name": "Fabrikam Foods",
+  "invoice_number": "INV-1004",
+  "invoice_date": "2026-05-20",
+  "currency": "USD",
+  "subtotal": "1800.00",
+  "tax_total": "0",
+  "total": "1800.00",
+  "po_ref": "PO-6004",
+  "grn_ref": "GRN-8004",
+  "line_items": [
+    { "line_no": 1, "sku": "JUICE-1L", "description": "Apple Juice 1L", "quantity": "100", "unit_price": "18.00", "line_total": "1800.00", "unit_of_measure": "case", "uom_factor": "24" }
+  ]
+}

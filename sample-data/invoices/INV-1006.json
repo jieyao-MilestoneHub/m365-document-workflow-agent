@@ -1,0 +1,17 @@
+{
+  "vendor_name": "Northwind Beverages",
+  "invoice_number": "INV-1006",
+  "invoice_date": "2026-05-10",
+  "currency": "USD",
+  "subtotal": "151200.00",
+  "tax_total": "0",
+  "total": "151200.00",
+  "po_ref": "PO-6006",
+  "grn_ref": "GRN-8006",
+  "line_items": [
+    { "line_no": 1, "sku": "OJ-1L-CASE", "description": "Orange Juice 1L", "quantity": "8400", "unit_price": "18.00", "line_total": "151200.00", "unit_of_measure": "case" }
+  ],
+  "allowances": [
+    { "promo_id": "PROMO-MAY-BEV", "sku": "OJ-1L-CASE", "amount": "25200.00", "description": "May beverage trade allowance applied" }
+  ]
+}

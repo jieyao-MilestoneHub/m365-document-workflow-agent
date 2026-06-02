@@ -24,6 +24,7 @@
     "gray_zone_vendors": ["Acme-Lite"]
   },
   "freight_tolerance": "25.00",
+  "allowance_tolerance": "1.00",
   "valid_gl_accounts": ["2100", "5000", "1360", "5800"],
   "closed_periods": [],
   "sku_aliases": { "GLX-WA-01": "WIDGET-A" }

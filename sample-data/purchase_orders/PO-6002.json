@@ -1,0 +1,8 @@
+{
+  "po_number": "PO-6002",
+  "vendor_name": "Northwind Beverages",
+  "currency": "USD",
+  "lines": [
+    { "sku": "SPARKLING-330-CASE", "description": "Sparkling Water 330ml", "quantity": "500", "unit_price": "6.00", "unit_of_measure": "case" }
+  ]
+}
